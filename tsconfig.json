@@ -2,9 +2,7 @@
   "compilerOptions": {
     "lib": ["ESNext","dom"],
     "target": "ESNext",
-
-    "outDir": "dist",
-
+    
     "sourceMap": true,
 
 //    "strict": true,

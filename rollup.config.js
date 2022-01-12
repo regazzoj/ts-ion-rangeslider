@@ -19,7 +19,7 @@ export default [
             format: 'es',
             sourcemap: true,
         },
-        plugins: [esbuild({minify: true})]
+        plugins: [esbuild({bundle: true,minify: true})]
     }),
     bundle({
         plugins: [dts()],

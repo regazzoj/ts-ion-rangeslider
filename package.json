@@ -1,24 +1,18 @@
 {
-  "name": "ts-ion-rangeslider",
-  "version": "0.1",
-  "description": "Cool, comfortable and easily customizable range slider with many options and skin support without jQuery dependency",
-  "main": "dist/ts-ion-range-slider.js",
-  "types": "dist/ts-ion-range-slider.d.ts",
-  "style": "dist/ionRangeSlider.css",
-  "files": [
-    "dist"
-  ],
-  "scripts": {
-    "build": "tsc",
-    "ci": "(npm run build && npm run rollup) & npm t & wait",
-    "prepublishOnly": "npm run ci && npm run rollup",
-    "test": "jest",
-    "rollup": "rollup -c"
+  "author": "Regazzoj",
+  "bugs": {
+    "url": "https://github.com/regazzoj/ts-ion-rangeslider/issues"
   },
+  "description": "Cool, comfortable and easily customizable range slider with many options and skin support without jQuery dependency",
+  "homepage": "https://github.com/regazzoj/ts-ion-rangeslider#readme",
+  "license": "MIT",
+  "name": "ts-ion-rangeslider",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/regazzoj/ts-ion-rangeslider.git"
   },
+  "version": "0.1",
+
   "keywords": [
     "typescript",
     "vanilla",
@@ -33,12 +27,21 @@
     "noui",
     "skins"
   ],
-  "author": "Regazzoj",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/regazzoj/ts-ion-rangeslider/issues"
+
+  "files": [
+    "dist"
+  ],
+  "main": "dist/ts-ion-range-slider.js",
+  "types": "dist/ts-ion-range-slider.d.ts",
+  "style": "dist/ionRangeSlider.css",
+  "scripts": {
+    "build": "rollup -c",
+    "ci": "(yarn compile && yarn build) & yarn test & wait",
+    "compile": "tsc --noEmit",
+    "prepublishOnly": "yarn ci && yarn bundle",
+    "test": "jest"
   },
-  "homepage": "https://github.com/regazzoj/ts-ion-rangeslider#readme",
+  
   "devDependencies": {
     "@types/jest": "^27.4.0",
     "esbuild": "^0.14.11",
