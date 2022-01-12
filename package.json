@@ -1,9 +1,10 @@
 {
   "name": "ts-ion-rangeslider",
-  "version": "0.2.1",
+  "version": "0.1",
   "description": "Cool, comfortable and easily customizable range slider with many options and skin support without jQuery dependency",
-  "main": "dist/index.js",
-  "browser": "dist/ts-ion-range-slider.min.js",
+  "main": "dist/ts-ion-range-slider.js",
+  "types": "dist/ts-ion-range-slider.d.ts",
+  "style": "dist/ionRangeSlider.css",
   "files": [
     "dist"
   ],
@@ -16,7 +17,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ivkan/ts-ion-rangeslider.git"
+    "url": "git+https://github.com/regazzoj/ts-ion-rangeslider.git"
   },
   "keywords": [
     "typescript",
@@ -32,20 +33,23 @@
     "noui",
     "skins"
   ],
-  "author": "Denis Ineshin (IonDen)",
+  "author": "Regazzoj",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/ivkan/ts-ion-rangeslider/issues"
+    "url": "https://github.com/regazzoj/ts-ion-rangeslider/issues"
   },
-  "homepage": "https://github.com/ivkan/ts-ion-rangeslider#readme",
+  "homepage": "https://github.com/regazzoj/ts-ion-rangeslider#readme",
   "devDependencies": {
-    "@types/jest": "^26.0.16",
-    "jest": "^26.6.3",
-    "rollup": "^2.34.1",
-    "rollup-plugin-babel-minify": "^10.0.0",
-    "rollup-plugin-commonjs": "^10.1.0",
-    "rollup-plugin-node-resolve": "^5.2.0",
-    "ts-jest": "^26.4.4",
-    "typescript": "^4.1.2"
+    "@types/jest": "^27.4.0",
+    "esbuild": "^0.14.11",
+    "jest": "^27.4.7",
+    "less": "^4.1.2",
+    "postcss": "^8.4.5",
+    "rollup": "^2.58.3",
+    "rollup-plugin-dts": "^4.1.0",
+    "rollup-plugin-esbuild": "^4.8.2",
+    "rollup-plugin-postcss": "^4.0.2",
+    "ts-jest": "^27.1.2",
+    "typescript": "^4.4.4"
   }
 }

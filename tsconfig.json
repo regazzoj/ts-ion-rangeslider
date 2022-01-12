@@ -1,9 +1,16 @@
 {
   "compilerOptions": {
+    "lib": ["ESNext","dom"],
+    "target": "ESNext",
+
     "outDir": "dist",
-    "lib": ["es2016", "dom"],
+
     "sourceMap": true,
-    "declaration": true
+
+//    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
   },
   "include": [
     "src/**/*.ts"

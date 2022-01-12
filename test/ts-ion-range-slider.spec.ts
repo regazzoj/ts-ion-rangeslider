@@ -1,4 +1,4 @@
-import { TsIonRangeSlider } from '../src/ts-ion-range-slider';
+import * as TsIonRangeSlider from '../src/ts-ion-range-slider';
 
 test('TsIonRangeSlider', () =>
 {
