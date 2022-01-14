@@ -1,15 +1,3 @@
-## Installation - NPM
-
-```bash
-npm i ts-ion-rangeslider
-```
-
-## Installation - Yarn
-
-```bash
-yarn add ts-ion-rangeslider
-```
-
 [//]: # ()
 [//]: # (## Installation - Browser)
 [//]: # ()
@@ -48,11 +36,50 @@ yarn add ts-ion-rangeslider
 
 ## Usage
 
-Add the following libraries to the page:
+### Browser
+You can add directly the library to your HTML page with script tags :
 * ts-ion-range-slider.min.js
 
-Add the following stylesheets from <a href="https://github.com/IonDen/ion.rangeSlider" target="_blank">Ion.RangeSlider</a> to the page:
-* ion.rangeSlider.min.css
+You also need to add following style sheet :
+* ionRangeSlider.css
+
+```html
+<html>
+    <head>
+        ...
+        <script src="js/bundle.js"></script>
+        <link rel="stylesheet" type="text/css" href="style.css">
+        ...
+    </head>
+    <body>
+    ...
+    </body>
+</html>
+```
+
+### Package Manager (NPM or Yarn)
+
+* Install package according to the package manager you use : 
+  * Installation command for `npm` =>
+
+    ```bash
+    npm i ts-ion-rangeslider
+    ```
+
+  * Installation command for `yarn` =>
+
+    ```bash
+    yarn add ts-ion-rangeslider
+    ```
+
+[//]: # (### NPM or YARN)
+
+[//]: # (```bash)
+
+[//]: # (./node_modules/ts-ion-rangeslider/dist/styles/ionRangeSlider.css)
+
+[//]: # (```)
+[//]: # (TODO dire comment importer le CSS après avoir publié le package)
 
 ## Initialisation
 

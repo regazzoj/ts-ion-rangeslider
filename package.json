@@ -12,7 +12,6 @@
     "url": "git+https://github.com/regazzoj/ts-ion-rangeslider.git"
   },
   "version": "0.1",
-
   "keywords": [
     "typescript",
     "vanilla",
@@ -27,21 +26,23 @@
     "noui",
     "skins"
   ],
-
   "files": [
-    "dist"
+    "dist/mjs",
+    "dist/umd",
+    "dist/styles",
+    "dist/typings/"
   ],
-  "main": "dist/ts-ion-range-slider.js",
-  "types": "dist/ts-ion-range-slider.d.ts",
-  "style": "dist/ionRangeSlider.css",
+  "main": "dist/umd/ts-ion-range-slider.js",
+  "module": "dist/mjs/ts-ion-range-slider.mjs",
+  "types": "dist/typings/ts-ion-range-slider.d.ts",
+  "style": "dist/styles/ionRangeSlider.css",
   "scripts": {
-    "build": "rollup -c",
-    "ci": "(yarn compile && yarn build) & yarn test & wait",
-    "compile": "tsc --noEmit",
-    "prepublishOnly": "yarn ci && yarn bundle",
-    "test": "jest"
+    "build": "yarn typegen && yarn rollup -c",
+    "ci": "yarn build & yarn test & wait",
+    "prepublishOnly": "yarn ci",
+    "test": "jest",
+    "typegen": "tsc --declaration --noEmit false --outDir typings/ --emitDeclarationOnly --declarationMap"
   },
-  
   "devDependencies": {
     "@types/jest": "^27.4.0",
     "esbuild": "^0.14.11",
