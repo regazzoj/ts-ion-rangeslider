@@ -1,5 +1,5 @@
-import { Slider } from '../src/ts-ion-range-slider';
+import { Slider } from '../src/range-slider';
 
-test("TsIonRangeSlider is exported", () => {
+test("RangeSlider is exported", () => {
   expect(Slider).toBeInstanceOf(Object);
 });

@@ -1,6 +1,7 @@
-import * as TsIonRangeSlider from '../src/ts-ion-range-slider';
+import * as TsIonRangeSlider from '../src/range-slider';
+import {SliderType} from "../src/range-slider-configuration";
 
-test('TsIonRangeSlider', () =>
+test('RangeSlider', () =>
 {
   const div   = document.createElement('div');
   const input = document.createElement('input');
@@ -14,11 +15,11 @@ test('TsIonRangeSlider', () =>
     grid_snap       : false,
     hide_from_to    : false,
     hide_min_max    : false,
-    onChange        : obj => console.log(obj),
-    onFinish        : obj => console.log(obj),
-    onStart         : obj => console.log(obj),
-    onUpdate        : obj => console.log(obj),
-    type            : 'double',
+    onChange        : obj => console.log({...obj}),
+    onFinish        : obj => console.log({...obj}),
+    onStart         : obj => console.log({...obj}),
+    onUpdate        : obj => console.log({...obj}),
+    type            : SliderType.double,
     values          : ['a', 'b', 'c'],
     values_separator: ','
   });
@@ -28,4 +29,3 @@ test('TsIonRangeSlider', () =>
   sliderInputElement.reset();
   sliderInputElement.destroy();
 });
-

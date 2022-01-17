@@ -1,15 +1,15 @@
 {
   "author": "Regazzoj",
   "bugs": {
-    "url": "https://github.com/regazzoj/ts-ion-rangeslider/issues"
+    "url": "https://github.com/regazzoj/ts-rangeslider/issues"
   },
   "description": "Cool, comfortable and easily customizable range slider with many options and skin support without jQuery dependency",
-  "homepage": "https://github.com/regazzoj/ts-ion-rangeslider#readme",
+  "homepage": "https://github.com/regazzoj/ts-rangeslider#readme",
   "license": "MIT",
-  "name": "ts-ion-rangeslider",
+  "name": "ts-rangeslider",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/regazzoj/ts-ion-rangeslider.git"
+    "url": "git+https://github.com/regazzoj/ts-rangeslider.git"
   },
   "version": "0.1",
   "keywords": [
@@ -32,20 +32,24 @@
     "dist/styles",
     "dist/typings/"
   ],
-  "main": "dist/umd/ts-ion-range-slider.js",
-  "module": "dist/mjs/ts-ion-range-slider.mjs",
-  "types": "dist/typings/ts-ion-range-slider.d.ts",
+  "main": "dist/umd/ts-range-slider.js",
+  "module": "dist/mjs/ts-range-slider.mjs",
+  "types": "dist/typings/ts-range-slider.d.ts",
   "style": "dist/styles/ionRangeSlider.css",
   "scripts": {
     "build": "yarn typegen && yarn rollup -c",
-    "ci": "yarn build & yarn test & wait",
+    "ci": "yarn eslint & yarn build & yarn test & wait",
+    "eslint": "eslint 'src/**/*.ts'",
     "prepublishOnly": "yarn ci",
     "test": "jest",
     "typegen": "tsc --declaration --noEmit false --outDir typings/ --emitDeclarationOnly --declarationMap"
   },
   "devDependencies": {
     "@types/jest": "^27.4.0",
+    "@typescript-eslint/eslint-plugin": "^5.9.1",
+    "@typescript-eslint/parser": "^5.9.1",
     "esbuild": "^0.14.11",
+    "eslint": "^8.7.0",
     "jest": "^27.4.7",
     "less": "^4.1.2",
     "postcss": "^8.4.5",

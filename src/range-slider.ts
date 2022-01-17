@@ -1,79 +1,32 @@
-let pluginCount = 0;
+import {ICacheRangeSlider, Template} from "./cache-range-slider";
+import {
+    IRangeSliderConfiguration,
+    RangeSliderConfigurationUtil, RangeSliderEvent
+} from "./range-slider-configuration";
 
 export interface ISlider {
     destroy(): void;
+
     reset(): void;
-    update(option: IonRangeSliderOptions): void;
-}
 
-export interface IonRangeSliderOptions {
-    skin?: 'flat' | 'big' | 'modern' | 'round' | 'sharp' | 'square'; // Set slider theme [Default: flat]
-    type?: string;    // Choose slider type, could be `single` - for one handle, or `double` for two handles [Default: single]
-    min?: number;    // Set slider minimum value [Default: 10]
-    max?: number;    // Set slider maximum value [Default: 100]
-    from?: number;    // Set start position for left handle (or for single handle) [Default: min]
-    to?: number;    // Set start position for right handle [Default: max]
-    step?: number;    // Set sliders step. Always > 0. Could be fractional [Default: 1]
-    min_interval?: number;    // Set minimum diapason between sliders. Only for **double** type [Default: -]
-    max_interval?: number;    // Set minimum maximum between sliders. Only for **double** type [Default: -]
-    drag_interval?: boolean;   // Allow user to drag whole range. Only for **double** type [Default: false]
-    values?: any[];     // Set up your own array of possible slider values. They could be numbers or strings. If the values array is set up, min, max and step param, can no longer be changed [Default: []]
-    from_fixed?: boolean;   // Fix position of left (or single) handle [Default: false]
-    from_min?: number;    // Set minimum limit for left (or single) handle [Default: min]
-    from_max?: number;    // Set maximum limit for left (or single) handle [Default: max]
-    from_shadow?: boolean;   // Highlight the limits for left handle [Default: false]
-    to_fixed?: boolean;   // Fix position of right handle [Default: false]
-    to_min?: number;    // Set minimum limit for right handle [Default: min]
-    to_max?: number;    // Set maximum limit for right handle [Default: max]
-    to_shadow?: boolean;   // Highlight the right handle [Default: false]
-    prettify_enabled?: boolean;   // Improve readability of long numbers: 10000000 &rarr; 10 000 000 [Default: true]
-    prettify_separator?: string;    // Set up your own separator for long numbers: 10000000 &rarr; 10,000,000 etc. [Default:  ]
-    prettify?: (num: number) => string; // Set up your own prettify function. Can be anything. For example, you can set up unix time as slider values and than transform them to cool looking dates [Default: null]
-    force_edges?: boolean;   // Sliders handles and tooltips will be always inside it's container [Default: false]
-    keyboard?: boolean;   // Activates keyboard controls. Move left: &larr;, &darr;, A, S. Move right: &rarr;, &uarr;, W, D. [Default: true]
-    grid?: boolean;   // Enables grid of values above the slider [Default: true]
-    grid_margin?: boolean;   // Set left and right grid gaps [Default: true]
-    grid_num?: number;    // Number of grid units [Default: 4]
-    grid_snap?: boolean;   // Snap grid to sliders step (step param). If activated, grid_num will not be used. Max steps = 50 [Default: false]
-    hide_min_max?: boolean;   // Hides **min** and **max** labels [Default: false]
-    hide_from_to?: boolean;   // Hides **from** and **to** labels [Default: false]
-    prefix?: string;    // Set prefix for values. Will be set up right before the number: **$**100 [Default: ]
-    postfix?: string;    // Set postfix for values. Will be set up right after the number: 100**k** [Default: ]
-    max_postfix?: string;    // Special postfix, used only for maximum value. Will be showed after handle will reach maximum right position. For example **0 — 100+** [Default: ]
-    decorate_both?: boolean;   // Used for **double** type and only if prefix or postfix was set up. Determine how to decorate close values. For example: **$10k — $100k** or **$10 — 100k** [Default: true]
-    values_separator?: string;    // Set your own separator for close values. Used for **double** type. Default: **10 — 100**. Or you may set: **10 to 100, 10 + 100, 10 &rarr; 100** etc. [Default:  - ]
-    input_values_separator?: string;    // Separator for **double** values in input value property. `<input value="25;42"> [Default:  ; ]
-    disable?: boolean;   // Locks slider and makes it inactive. Input is disabled too. Invisible to forms [Default: false]
-    block?: boolean;   // Locks slider and makes it inactive. Input is NOT disabled. Can be send with forms [Default: false]
-    extra_classes?: string;    // Traverse extra CSS-classes to sliders container [Default: —]
-    scope?: any;       // Scope for callbacks. Pass any object [Default: null]
-    onStart?: (obj: IonRangeSliderEvent) => void; // Callback. Is called on slider start. Gets all slider data as a 1st attribute [Default: null]
-    onChange?: (obj: IonRangeSliderEvent) => void; // Callback. IS called on each values change. Gets all slider data as a 1st attribute [Default: null]
-    onFinish?: (obj: IonRangeSliderEvent) => void; // Callback. Is called when user releases handle. Gets all slider data as a 1st attribute [Default: null]
-    onUpdate?: (obj: IonRangeSliderEvent) => void; // Callback. Is called when slider is modified by external methods `update` or `reset [Default: null]
-}
-
-export interface IonRangeSliderEvent {
-    min: any;               // MIN value
-    max: any;               // MAX value
-    from: number;           // FROM value (left or single handle)
-    from_percent: number;   // FROM value in percents
-    from_value: number;     // FROM index in values array (if used)
-    to: number;             // TO value (right handle in double type)
-    to_percent: number;     // TO value in percents
-    to_value: number;       // TO index in values array (if used)
+    update(option: Partial<IRangeSliderConfiguration>): void;
 }
 
 export class Slider implements ISlider {
-    private plugin_count = 0;
-    private input: HTMLInputElement;
+    private static currentPluginCount = 0;
+
+    private readonly cache: ICacheRangeSlider;
+    private readonly plugin_count: number;
+    private readonly result: RangeSliderEvent;
+
+    private input?: HTMLInputElement;
     private current_plugin = 0;
     private calc_count = 0;
-    private update_tm: any = 0;
+    private update_tm?: number;
     private old_from = 0;
     private old_to = 0;
-    private old_min_interval = null;
-    private raf_id = null;
+    private old_min_interval?: number;
+    private raf_id?: number;
     private dragging = false;
     private force_redraw = false;
     private no_diapason = false;
@@ -85,66 +38,46 @@ export class Slider implements ISlider {
     private is_active = false;
     private is_resize = false;
     private is_click = false;
-    private options: any;
-    private cache: any;
+    private configuration: IRangeSliderConfiguration;
+    // private options: any;
     private labels: any;
     private coords: any;
-    private update_check: any;
-    private result: any;
-    private target: string;
+    private update_check?: { from: number, to: number };
+    private target?: string;
 
-    private static getIsOldIe(): boolean {
-        const n = navigator.userAgent,
-            r = /msie\s\d+/i;
-        let v: string;
-        if (n.search(r) > 0) {
-            v = r.exec(n).toString();
-            v = v.split(' ')[1];
-            if (parseFloat(v) < 9) {
-                document.querySelector('html').classList.add('lt-ie9');
-                return true;
-            }
-        }
-        return false;
+    private static getCurrentPluginCount() {
+        return Slider.currentPluginCount++;
     }
 
-    // =================================================================================================================
-    // Template
-    // =================================================================================================================
-
-    private base_html =
-        '<span class="irs">' +
-        '<span class="irs-line" tabindex="0"></span>' +
-        '<span class="irs-min">0</span><span class="irs-max">1</span>' +
-        '<span class="irs-from">0</span><span class="irs-to">0</span><span class="irs-single">0</span>' +
-        '</span>' +
-        '<span class="irs-grid"></span>';
-
-    private single_html =
-        '<span class="irs-bar irs-bar--single"></span>' +
-        '<span class="irs-shadow shadow-single"></span>' +
-        '<span class="irs-handle single"><i></i><i></i><i></i></span>';
-
-    private double_html =
-        '<span class="irs-bar"></span>' +
-        '<span class="irs-shadow shadow-from"></span>' +
-        '<span class="irs-shadow shadow-to"></span>' +
-        '<span class="irs-handle from"><i></i><i></i><i></i></span>' +
-        '<span class="irs-handle to"><i></i><i></i><i></i></span>';
-
-    private disable_html = '<span class="irs-disable-mask"></span>';
+    private static getIsOldIe(): boolean {
+        const userAgent = navigator.userAgent,
+            msieRegExp = /msie\s\d+/i;
+        if (userAgent.search(msieRegExp) === -1) {
+            return false;
+        }
+        const matches = userAgent.match(msieRegExp);
+        if (!matches) {
+            return false;
+        }
+        const version = matches[0].split(' ')[1];
+        if (parseFloat(version) >= 9) {
+            return false;
+        }
+        const html = document.querySelector('html');
+        const classToAdd = 'lt-ie9';
+        if (html && !html.classList.contains(classToAdd)) {
+            html.classList.add(classToAdd);
+        }
+        return true;
+    }
 
     // =================================================================================================================
     // Core
     // =================================================================================================================
 
-    constructor(input: HTMLInputElement, options: IonRangeSliderOptions) {
-        this.rangeSlider(input, options);
-    }
-
-    private rangeSlider(input: HTMLInputElement, options) {
+    constructor(input: HTMLInputElement, options: Partial<IRangeSliderConfiguration>) {
         this.input = input;
-        this.plugin_count = pluginCount++;
+        this.plugin_count = Slider.getCurrentPluginCount();
 
         options = options || {};
 
@@ -232,125 +165,45 @@ export class Slider implements ISlider {
         /**
          * get and validate config
          */
-        const $inp = this.cache.input;
-        let val = $inp.value, config;
-
-        // default config
-        config = {
-            skin: 'flat',
-            type: 'single',
-
-            min: 10,
-            max: 100,
-            from: null,
-            to: null,
-            step: 1,
-
-            min_interval: 0,
-            max_interval: 0,
-            drag_interval: false,
-
-            values: [],
-            p_values: [],
-
-            from_fixed: false,
-            from_min: null,
-            from_max: null,
-            from_shadow: false,
-
-            to_fixed: false,
-            to_min: null,
-            to_max: null,
-            to_shadow: false,
-
-            prettify_enabled: true,
-            prettify_separator: ' ',
-            prettify: null,
-
-            force_edges: false,
-
-            keyboard: true,
-
-            grid: false,
-            grid_margin: true,
-            grid_num: 4,
-            grid_snap: false,
-
-            hide_min_max: false,
-            hide_from_to: false,
-
-            prefix: '',
-            postfix: '',
-            max_postfix: '',
-            decorate_both: true,
-            values_separator: ' — ',
-
-            input_values_separator: ';',
-
-            disable: false,
-            block: false,
-
-            extra_classes: '',
-
-            scope: null,
-            onStart: null,
-            onChange: null,
-            onFinish: null,
-            onUpdate: null
-        };
+        const inputElement = this.cache.input;
+        if (!inputElement) {
+            throw Error("Given input element does not exist")
+        }
 
         // check if base element is input
-        if ($inp.nodeName !== 'INPUT') {
-            console.warn('Base element should be <input>!', $inp[0]);
+        if (inputElement.nodeName !== 'INPUT') {
+            throw Error('Base element should be <input>!');
         }
 
-        // input value extends default config
-        if (val !== undefined && val !== '') {
-            val = val.split(options.input_values_separator || ';');
-
-            if (val[0] && val[0] === +val[0]) {
-                val[0] = +val[0];
-            }
-            if (val[1] && val[1] === +val[1]) {
-                val[1] = +val[1];
-            }
-
-            if (options && options.values && options.values.length) {
-                config.from = val[0] && options.values.indexOf(val[0]);
-                config.to = val[1] && options.values.indexOf(val[1]);
-            } else {
-                config.from = val[0] && +val[0];
-                config.to = val[1] && +val[1];
-            }
-        }
-
-        // mergeObjects
-
-        // js config extends default config
-        config = Object.assign({}, config, options);
-        this.options = config;
+        // merge configurations
+        this.configuration = RangeSliderConfigurationUtil.initializeConfiguration(options, inputElement.value);
 
         // validate config, to be sure that all data types are correct
-        this.update_check = {};
-        this.validate();
+        this.update_check = undefined;
 
         // default result object, returned to callbacks
         this.result = {
             input: this.cache.input,
-            slider: null,
+            slider: undefined,
 
-            min: this.options.min,
-            max: this.options.max,
+            min: this.configuration.min,
+            max: this.configuration.max,
 
-            from: this.options.from,
+            from: this.configuration.from,
             from_percent: 0,
-            from_value: null,
+            from_value: undefined,
 
-            to: this.options.to,
+            to: this.configuration.to,
             to_percent: 0,
-            to_value: null
-        };
+            to_value: undefined,
 
+            min_pretty: undefined,
+            max_pretty: undefined,
+            
+            from_pretty: undefined,
+            to_pretty: undefined
+        };
+        
         this.init();
     }
 
@@ -359,7 +212,7 @@ export class Slider implements ISlider {
      */
     private init(is_update?: boolean): void {
         this.no_diapason = false;
-        this.coords.p_step = this.convertToPercent(this.options.step, true);
+        this.coords.p_step = this.convertToPercent(this.configuration.step, true);
         this.target = 'base';
 
         this.toggleInput();
@@ -387,13 +240,23 @@ export class Slider implements ISlider {
      * Appends slider template to a DOM
      */
     private append(): void {
-        const container_html = '<span class="irs irs--' + this.options.skin + ' js-irs-' + this.plugin_count + ' ' + this.options.extra_classes + '"></span>';
+        const container_html = '<span class="irs irs--' + this.configuration.skin + ' js-irs-' + this.plugin_count + ' ' + this.configuration.extra_classes + '"></span>';
+
+        if (!this.cache.input) {
+            throw Error("Given input element does not exist");
+        }
+
         this.cache.input.insertAdjacentHTML('beforebegin', container_html);
         this.cache.input.readOnly = true;
         this.cache.cont = this.cache.input.previousElementSibling;
+
+        if (!this.cache.cont) {
+            throw Error("Cache container could not be added before the input")
+        }
+
         this.result.slider = this.cache.cont;
 
-        this.cache.cont.innerHTML = this.base_html;
+        this.cache.cont.innerHTML = Template.base_html;
         this.cache.rs = this.cache.cont.querySelector('.irs');
         this.cache.min = this.cache.cont.querySelector('.irs-min');
         this.cache.max = this.cache.cont.querySelector('.irs-max');
@@ -403,16 +266,16 @@ export class Slider implements ISlider {
         this.cache.line = this.cache.cont.querySelector('.irs-line');
         this.cache.grid = this.cache.cont.querySelector('.irs-grid');
 
-        if (this.options.type === 'single') {
-            this.cache.cont.insertAdjacentHTML('beforeend', this.single_html);
+        if (this.configuration.type === 'single') {
+            this.cache.cont.insertAdjacentHTML('beforeend', Template.single_html);
             this.cache.bar = this.cache.cont.querySelector('.irs-bar');
             this.cache.edge = this.cache.cont.querySelector('.irs-bar-edge');
             this.cache.s_single = this.cache.cont.querySelector('.single');
-            this.cache.from.style.visibility = 'hidden';
-            this.cache.to.style.visibility = 'hidden';
+            this.cache.from!.style.visibility = 'hidden';
+            this.cache.to!.style.visibility = 'hidden';
             this.cache.shad_single = this.cache.cont.querySelector('.shadow-single');
         } else {
-            this.cache.cont.insertAdjacentHTML('beforeend', this.double_html);
+            this.cache.cont.insertAdjacentHTML('beforeend', Template.double_html);
             this.cache.bar = this.cache.cont.querySelector('.irs-bar');
             this.cache.s_from = this.cache.cont.querySelector('.from');
             this.cache.s_to = this.cache.cont.querySelector('.to');
@@ -422,15 +285,15 @@ export class Slider implements ISlider {
             this.setTopHandler();
         }
 
-        if (this.options.hide_from_to) {
-            this.cache.from.style.display = 'none';
-            this.cache.to.style.display = 'none';
-            this.cache.single.style.display = 'none';
+        if (this.configuration.hide_from_to) {
+            this.cache.from!.style.display = 'none';
+            this.cache.to!.style.display = 'none';
+            this.cache.single!.style.display = 'none';
         }
 
         this.appendGrid();
 
-        if (this.options.disable) {
+        if (this.configuration.disable) {
             this.appendDisableMask();
             this.cache.input.disabled = true;
         } else {
@@ -440,16 +303,16 @@ export class Slider implements ISlider {
         }
 
         // block only if not disabled
-        if (!this.options.disable) {
-            if (this.options.block) {
+        if (!this.configuration.disable) {
+            if (this.configuration.block) {
                 this.appendDisableMask();
             } else {
                 this.removeDisableMask();
             }
         }
 
-        if (this.options.drag_interval) {
-            this.cache.bar.style.cursor = 'ew-resize';
+        if (this.configuration.drag_interval) {
+            this.cache.bar!.style.cursor = 'ew-resize';
         }
     }
 
@@ -458,15 +321,15 @@ export class Slider implements ISlider {
      * works only for double slider type
      */
     private setTopHandler(): void {
-        const min = this.options.min,
-            max = this.options.max,
-            from = this.options.from,
-            to = this.options.to;
+        const min = this.configuration.min,
+            max = this.configuration.max,
+            from = this.configuration.from,
+            to = this.configuration.to;
 
         if (from > min && to === max) {
-            this.cache.s_from.classList.add('type_last');
+            this.cache.s_from!.classList.add('type_last');
         } else if (to < max) {
-            this.cache.s_to.classList.add('type_last');
+            this.cache.s_to!.classList.add('type_last');
         }
     }
 
@@ -478,25 +341,25 @@ export class Slider implements ISlider {
         switch (target) {
             case 'single':
                 this.coords.p_gap = Slider.toFixed(this.coords.p_pointer - this.coords.p_single_fake);
-                this.cache.s_single.classList.add('state_hover');
+                this.cache.s_single!.classList.add('state_hover');
                 break;
             case 'from':
                 this.coords.p_gap = Slider.toFixed(this.coords.p_pointer - this.coords.p_from_fake);
-                this.cache.s_from.classList.add('state_hover');
-                this.cache.s_from.classList.add('type_last');
-                this.cache.s_to.classList.remove('type_last');
+                this.cache.s_from!.classList.add('state_hover');
+                this.cache.s_from!.classList.add('type_last');
+                this.cache.s_to!.classList.remove('type_last');
                 break;
             case 'to':
                 this.coords.p_gap = Slider.toFixed(this.coords.p_pointer - this.coords.p_to_fake);
-                this.cache.s_to.classList.add('state_hover');
-                this.cache.s_to.classList.add('type_last');
-                this.cache.s_from.classList.remove('type_last');
+                this.cache.s_to!.classList.add('state_hover');
+                this.cache.s_to!.classList.add('type_last');
+                this.cache.s_from!.classList.remove('type_last');
                 break;
             case 'both':
                 this.coords.p_gap_left = Slider.toFixed(this.coords.p_pointer - this.coords.p_from_fake);
                 this.coords.p_gap_right = Slider.toFixed(this.coords.p_to_fake - this.coords.p_pointer);
-                this.cache.s_to.classList.remove('type_last');
-                this.cache.s_from.classList.remove('type_last');
+                this.cache.s_to!.classList.remove('type_last');
+                this.cache.s_from!.classList.remove('type_last');
                 break;
         }
     }
@@ -506,8 +369,8 @@ export class Slider implements ISlider {
      * appends extra layer with opacity
      */
     private appendDisableMask(): void {
-        this.cache.cont.innerHTML = this.disable_html;
-        this.cache.cont.classList.add('irs-disabled');
+        this.cache.cont!.innerHTML = Template.disable_html;
+        this.cache.cont!.classList.add('irs-disabled');
     }
 
     /**
@@ -515,13 +378,13 @@ export class Slider implements ISlider {
      * remove disable mask
      */
     private removeDisableMask(): void {
-        Slider.removeElement(this.cache.cont.querySelector('.irs-disable-mask'));
-        this.cache.cont.classList.remove('irs-disabled');
+        Slider.removeElement(this.cache.cont!.querySelector('.irs-disable-mask'));
+        this.cache.cont!.classList.remove('irs-disabled');
     }
 
-    private static removeElement(element: HTMLElement): void {
+    private static removeElement(element: Element | null): void {
         if (element) {
-            element.parentNode.removeChild(element);
+            element.parentNode?.removeChild(element);
         }
     }
 
@@ -533,7 +396,7 @@ export class Slider implements ISlider {
         Slider.removeElement(this.cache.cont);
         this.cache.cont = null;
 
-        this.unbindEvens();
+        this.unbindEvents();
 
         this.cache.grid_labels = [];
         this.coords.big = [];
@@ -541,7 +404,10 @@ export class Slider implements ISlider {
         this.coords.big_p = [];
         this.coords.big_x = [];
 
-        cancelAnimationFrame(this.raf_id);
+        if (this.raf_id) {
+            cancelAnimationFrame(this.raf_id);
+            this.raf_id = undefined;
+        }
     }
 
     /**
@@ -552,59 +418,59 @@ export class Slider implements ISlider {
             return;
         }
 
-        this.cache.body.addEventListener('touchmove', e => this.pointerMove(e));
-        this.cache.body.addEventListener('mousemove', e => this.pointerMove(e));
-        this.cache.win.addEventListener('touchend', e => this.pointerUp(e));
-        this.cache.win.addEventListener('mouseup', e => this.pointerUp(e));
-        this.cache.line.addEventListener('touchstart', e => this.pointerClick('click', e));
-        this.cache.line.addEventListener('mousedown', e => this.pointerClick('click', e));
-        this.cache.line.addEventListener('focus', e => this.pointerFocus(e));
+        this.cache.body.addEventListener('touchmove', (e: TouchEvent) => this.pointerMove(e));
+        this.cache.body.addEventListener('mousemove', (e: MouseEvent) => this.pointerMove(e));
+        this.cache.win.addEventListener('touchend', (e: TouchEvent) => this.pointerUp(e));
+        this.cache.win.addEventListener('mouseup', (e: MouseEvent) => this.pointerUp(e));
+        this.cache.line!.addEventListener('touchstart', (e: TouchEvent) => this.pointerClick('click', e));
+        this.cache.line!.addEventListener('mousedown', (e: MouseEvent) => this.pointerClick('click', e));
+        this.cache.line!.addEventListener('focus', (e: FocusEvent) => this.pointerFocus(e));
 
-        if (this.options.drag_interval && this.options.type === 'double') {
-            this.cache.bar.addEventListener('touchstart', e => this.pointerDown('both', e));
-            this.cache.bar.addEventListener('mousedown', e => this.pointerDown('both', e));
+        if (this.configuration.drag_interval && this.configuration.type === 'double') {
+            this.cache.bar!.addEventListener('touchstart', (e: TouchEvent) => this.pointerDown('both', e));
+            this.cache.bar!.addEventListener('mousedown', (e: MouseEvent) => this.pointerDown('both', e));
         } else {
-            this.cache.bar.addEventListener('touchstart', e => this.pointerClick('click', e));
-            this.cache.bar.addEventListener('mousedown', e => this.pointerClick('click', e));
+            this.cache.bar!.addEventListener('touchstart', (e: TouchEvent) => this.pointerClick('click', e));
+            this.cache.bar!.addEventListener('mousedown', (e: MouseEvent) => this.pointerClick('click', e));
         }
 
-        if (this.options.type === 'single') {
-            this.cache.single.addEventListener('touchstart', e => this.pointerDown('single', e));
-            this.cache.s_single.addEventListener('touchstart', e => this.pointerDown('single', e));
-            this.cache.shad_single.addEventListener('touchstart', e => this.pointerClick('click', e));
+        if (this.configuration.type === 'single') {
+            this.cache.single!.addEventListener('touchstart', (e: TouchEvent) => this.pointerDown('single', e));
+            this.cache.s_single!.addEventListener('touchstart', (e: TouchEvent) => this.pointerDown('single', e));
+            this.cache.shad_single!.addEventListener('touchstart', (e: TouchEvent) => this.pointerClick('click', e));
 
-            this.cache.single.addEventListener('mousedown', e => this.pointerDown('single', e));
-            this.cache.s_single.addEventListener('mousedown', e => this.pointerDown('single', e));
-            this.cache.shad_single.addEventListener('mousedown', e => this.pointerClick.bind('click', e));
+            this.cache.single!.addEventListener('mousedown', (e: MouseEvent) => this.pointerDown('single', e));
+            this.cache.s_single!.addEventListener('mousedown', (e: MouseEvent) => this.pointerDown('single', e));
+            this.cache.shad_single!.addEventListener('mousedown', (e: MouseEvent) => this.pointerClick('click', e));
 
             if (this.cache.edge) {
-                this.cache.edge.addEventListener('mousedown', e => this.pointerClick('click', e));
+                this.cache.edge.addEventListener('mousedown', (e: MouseEvent) => this.pointerClick('click', e));
             }
         } else {
-            this.cache.single.addEventListener('touchstart', e => this.pointerDown(null, e));
-            this.cache.single.addEventListener('mousedown', e => this.pointerDown(null, e));
+            this.cache.single!.addEventListener('touchstart', (e: TouchEvent) => this.pointerDown(null, e));
+            this.cache.single!.addEventListener('mousedown', (e: MouseEvent) => this.pointerDown(null, e));
 
-            this.cache.from.addEventListener('touchstart', e => this.pointerDown('from', e));
-            this.cache.s_from.addEventListener('touchstart', e => this.pointerDown('from', e));
-            this.cache.to.addEventListener('touchstart', e => this.pointerDown('to', e));
-            this.cache.s_to.addEventListener('touchstart', e => this.pointerDown('to', e));
-            this.cache.shad_from.addEventListener('touchstart', e => this.pointerClick('click', e));
-            this.cache.shad_to.addEventListener('touchstart', e => this.pointerClick('click', e));
+            this.cache.from!.addEventListener('touchstart', (e: TouchEvent) => this.pointerDown('from', e));
+            this.cache.s_from!.addEventListener('touchstart', (e: TouchEvent) => this.pointerDown('from', e));
+            this.cache.to!.addEventListener('touchstart', (e: TouchEvent) => this.pointerDown('to', e));
+            this.cache.s_to!.addEventListener('touchstart', (e: TouchEvent) => this.pointerDown('to', e));
+            this.cache.shad_from!.addEventListener('touchstart', (e: TouchEvent) => this.pointerClick('click', e));
+            this.cache.shad_to!.addEventListener('touchstart', (e: TouchEvent) => this.pointerClick('click', e));
 
-            this.cache.from.addEventListener('mousedown', e => this.pointerDown('from', e));
-            this.cache.s_from.addEventListener('mousedown', e => this.pointerDown('from', e));
-            this.cache.to.addEventListener('mousedown', e => this.pointerDown('to', e));
-            this.cache.s_to.addEventListener('mousedown', e => this.pointerDown('to', e));
-            this.cache.shad_from.addEventListener('mousedown', e => this.pointerClick('click', e));
-            this.cache.shad_to.addEventListener('mousedown', e => this.pointerClick('click', e));
+            this.cache.from!.addEventListener('mousedown', (e: MouseEvent) => this.pointerDown('from', e));
+            this.cache.s_from!.addEventListener('mousedown', (e: MouseEvent) => this.pointerDown('from', e));
+            this.cache.to!.addEventListener('mousedown', (e: MouseEvent) => this.pointerDown('to', e));
+            this.cache.s_to!.addEventListener('mousedown', (e: MouseEvent) => this.pointerDown('to', e));
+            this.cache.shad_from!.addEventListener('mousedown', (e: MouseEvent) => this.pointerClick('click', e));
+            this.cache.shad_to!.addEventListener('mousedown', (e: MouseEvent) => this.pointerClick('click', e));
         }
 
-        if (this.options.keyboard) {
-            this.cache.line.addEventListener('keydown', e => this.key('keyboard', e));
+        if (this.configuration.keyboard) {
+            this.cache.line!.addEventListener('keydown', (e: KeyboardEvent) => this.key('keyboard', e));
         }
 
         if (Slider.getIsOldIe()) {
-            this.cache.body.addEventListener('mouseup', e => this.pointerUp(e));
+            this.cache.body.addEventListener('mouseup', (e: MouseEvent) => this.pointerUp(e));
             this.cache.body.addEventListener('mouseleave', e => this.pointerUp(e));
         }
     }
@@ -615,20 +481,22 @@ export class Slider implements ISlider {
     private pointerFocus(_: any): void {
         if (!this.target) {
             let x;
-            let $handle;
+            let handle;
 
-            if (this.options.type === 'single') {
-                $handle = this.cache.single;
+            if (this.configuration.type === 'single') {
+                handle = this.cache.single;
             } else {
-                $handle = this.cache.from;
+                handle = this.cache.from;
             }
 
-            x = Slider.getOffset($handle).left;
-            x += ($handle.width() / 2) - 1;
+            if (!handle) {
+                throw Error("Handle is not defined");
+            }
+            x = Slider.getOffset(handle).left;
+            x += (handle.offsetWidth / 2) - 1;
 
             this.pointerClick('single', {
-                preventDefault: function () {
-                }, pageX: x
+                preventDefault: () => { return; }, pageX: x
             });
         }
     }
@@ -672,7 +540,7 @@ export class Slider implements ISlider {
             return;
         }
 
-        Slider.removeClass(this.cache.cont.querySelector('.state_hover'), 'state_hover');
+        Slider.removeClass(this.cache.cont!.querySelector('.state_hover'), 'state_hover');
 
         this.force_redraw = true;
 
@@ -680,7 +548,7 @@ export class Slider implements ISlider {
         this.restoreOriginalMinInterval();
 
         // callbacks call
-        if (this.cache.cont[0].contains(e.target) || this.dragging) {
+        if (this.cache.cont!.contains(e.target) || this.dragging) {
             this.callOnFinish();
         }
 
@@ -754,14 +622,14 @@ export class Slider implements ISlider {
     }
 
     private static trigger(type: string, element: any) {
-        const evt = new Event(type, { bubbles: true,cancelable: true})
+        const evt = new Event(type, {bubbles: true, cancelable: true})
         element.dispatchEvent(evt);
     }
 
     /**
-     * Keyborard controls for focused slider
+     * Keyboard controls for focused slider
      */
-    private key(_: string, e: any): boolean {
+    private key(_: string, e: any) {
         if (this.current_plugin !== this.plugin_count || e.altKey || e.ctrlKey || e.shiftKey || e.metaKey) {
             return;
         }
@@ -783,8 +651,6 @@ export class Slider implements ISlider {
                 this.moveByKey(true);
                 break;
         }
-
-        return true;
     }
 
     /**
@@ -792,8 +658,8 @@ export class Slider implements ISlider {
      */
     private moveByKey(right: boolean): void {
         let p = this.coords.p_pointer;
-        let p_step = (this.options.max - this.options.min) / 100;
-        p_step = this.options.step / p_step;
+        let p_step = (this.configuration.max - this.configuration.min) / 100;
+        p_step = this.configuration.step / p_step;
 
         if (right) {
             p += p_step;
@@ -811,28 +677,28 @@ export class Slider implements ISlider {
      * of Min and Max labels
      */
     private setMinMax(): void {
-        if (!this.options) {
+        if (!this.configuration) {
             return;
         }
 
-        if (this.options.hide_min_max) {
-            this.cache.min.style.display = 'none';
-            this.cache.max.style.display = 'none';
+        if (this.configuration.hide_min_max) {
+            this.cache.min!.style.display = 'none';
+            this.cache.max!.style.display = 'none';
             return;
         }
 
-        if (this.options.values.length) {
-            this.cache.min.innerHTML = this.decorate(this.options.p_values[this.options.min]);
-            this.cache.max.innerHTML = this.decorate(this.options.p_values[this.options.max]);
+        if (this.configuration.values.length) {
+            this.cache.min!.innerHTML = this.decorate(this.configuration.p_values[this.configuration.min]);
+            this.cache.max!.innerHTML = this.decorate(this.configuration.p_values[this.configuration.max]);
         } else {
-            const min_pretty = this._prettify(this.options.min);
-            const max_pretty = this._prettify(this.options.max);
+            const min_pretty = this._prettify(this.configuration.min);
+            const max_pretty = this._prettify(this.configuration.max);
 
             this.result.min_pretty = min_pretty;
             this.result.max_pretty = max_pretty;
 
-            this.cache.min.innerHTML = this.decorate(min_pretty, this.options.min);
-            this.cache.max.innerHTML = this.decorate(max_pretty, this.options.max);
+            this.cache.min!.innerHTML = this.decorate(min_pretty, this.configuration.min);
+            this.cache.max!.innerHTML = this.decorate(max_pretty, this.configuration.max);
         }
 
         this.labels.w_min = Slider.outerWidth(this.cache.min);
@@ -856,19 +722,19 @@ export class Slider implements ISlider {
         const interval = this.result.to - this.result.from;
 
         if (this.old_min_interval === null) {
-            this.old_min_interval = this.options.min_interval;
+            this.old_min_interval = this.configuration.min_interval;
         }
 
-        this.options.min_interval = interval;
+        this.configuration.min_interval = interval;
     }
 
     /**
      * Restore min_interval option to original
      */
     private restoreOriginalMinInterval(): void {
-        if (this.old_min_interval !== null) {
-            this.options.min_interval = this.old_min_interval;
-            this.old_min_interval = null;
+        if (this.old_min_interval) {
+            this.configuration.min_interval = this.old_min_interval;
+            this.old_min_interval = undefined;
         }
     }
 
@@ -880,7 +746,7 @@ export class Slider implements ISlider {
      * All calculations and measures start here
      */
     private calc(update = false) {
-        if (!this.options) {
+        if (!this.configuration) {
             return;
         }
 
@@ -909,7 +775,7 @@ export class Slider implements ISlider {
             this.coords.p_gap = this.coords.p_handle / 2;
             handle_x = this.getHandleX();
 
-            if (this.options.drag_interval) {
+            if (this.configuration.drag_interval) {
                 this.target = 'both_one';
             } else {
                 this.target = this.chooseHandle(handle_x);
@@ -918,41 +784,23 @@ export class Slider implements ISlider {
 
         switch (this.target) {
             case 'base':
-                const w = (this.options.max - this.options.min) / 100,
-                    f = (this.result.from - this.options.min) / w,
-                    t = (this.result.to - this.options.min) / w;
-
-                this.coords.p_single_real = Slider.toFixed(f);
-                this.coords.p_from_real = Slider.toFixed(f);
-                this.coords.p_to_real = Slider.toFixed(t);
-
-                this.coords.p_single_real = this.checkDiapason(this.coords.p_single_real, this.options.from_min, this.options.from_max);
-                this.coords.p_from_real = this.checkDiapason(this.coords.p_from_real, this.options.from_min, this.options.from_max);
-                this.coords.p_to_real = this.checkDiapason(this.coords.p_to_real, this.options.to_min, this.options.to_max);
-
-                this.coords.p_single_fake = this.convertToFakePercent(this.coords.p_single_real);
-                this.coords.p_from_fake = this.convertToFakePercent(this.coords.p_from_real);
-                this.coords.p_to_fake = this.convertToFakePercent(this.coords.p_to_real);
-
-                this.target = null;
-
+                this.calcForBaseTarget();
                 break;
-
             case 'single':
-                if (this.options.from_fixed) {
+                if (this.configuration.from_fixed) {
                     break;
                 }
 
                 this.coords.p_single_real = this.convertToRealPercent(handle_x);
                 this.coords.p_single_real = this.calcWithStep(this.coords.p_single_real);
-                this.coords.p_single_real = this.checkDiapason(this.coords.p_single_real, this.options.from_min, this.options.from_max);
+                this.coords.p_single_real = this.checkDiapason(this.coords.p_single_real, this.configuration.from_min, this.configuration.from_max);
 
                 this.coords.p_single_fake = this.convertToFakePercent(this.coords.p_single_real);
 
                 break;
 
             case 'from':
-                if (this.options.from_fixed) {
+                if (this.configuration.from_fixed) {
                     break;
                 }
 
@@ -961,7 +809,7 @@ export class Slider implements ISlider {
                 if (this.coords.p_from_real > this.coords.p_to_real) {
                     this.coords.p_from_real = this.coords.p_to_real;
                 }
-                this.coords.p_from_real = this.checkDiapason(this.coords.p_from_real, this.options.from_min, this.options.from_max);
+                this.coords.p_from_real = this.checkDiapason(this.coords.p_from_real, this.configuration.from_min, this.configuration.from_max);
                 this.coords.p_from_real = this.checkMinInterval(this.coords.p_from_real, this.coords.p_to_real, 'from');
                 this.coords.p_from_real = this.checkMaxInterval(this.coords.p_from_real, this.coords.p_to_real, 'from');
 
@@ -970,7 +818,7 @@ export class Slider implements ISlider {
                 break;
 
             case 'to':
-                if (this.options.to_fixed) {
+                if (this.configuration.to_fixed) {
                     break;
                 }
 
@@ -979,7 +827,7 @@ export class Slider implements ISlider {
                 if (this.coords.p_to_real < this.coords.p_from_real) {
                     this.coords.p_to_real = this.coords.p_from_real;
                 }
-                this.coords.p_to_real = this.checkDiapason(this.coords.p_to_real, this.options.to_min, this.options.to_max);
+                this.coords.p_to_real = this.checkDiapason(this.coords.p_to_real, this.configuration.to_min, this.configuration.to_max);
                 this.coords.p_to_real = this.checkMinInterval(this.coords.p_to_real, this.coords.p_from_real, 'to');
                 this.coords.p_to_real = this.checkMaxInterval(this.coords.p_to_real, this.coords.p_from_real, 'to');
 
@@ -988,7 +836,7 @@ export class Slider implements ISlider {
                 break;
 
             case 'both':
-                if (this.options.from_fixed || this.options.to_fixed) {
+                if (this.configuration.from_fixed || this.configuration.to_fixed) {
                     break;
                 }
 
@@ -996,54 +844,24 @@ export class Slider implements ISlider {
 
                 this.coords.p_from_real = this.convertToRealPercent(handle_x) - this.coords.p_gap_left;
                 this.coords.p_from_real = this.calcWithStep(this.coords.p_from_real);
-                this.coords.p_from_real = this.checkDiapason(this.coords.p_from_real, this.options.from_min, this.options.from_max);
+                this.coords.p_from_real = this.checkDiapason(this.coords.p_from_real, this.configuration.from_min, this.configuration.from_max);
                 this.coords.p_from_real = this.checkMinInterval(this.coords.p_from_real, this.coords.p_to_real, 'from');
                 this.coords.p_from_fake = this.convertToFakePercent(this.coords.p_from_real);
 
                 this.coords.p_to_real = this.convertToRealPercent(handle_x) + this.coords.p_gap_right;
                 this.coords.p_to_real = this.calcWithStep(this.coords.p_to_real);
-                this.coords.p_to_real = this.checkDiapason(this.coords.p_to_real, this.options.to_min, this.options.to_max);
+                this.coords.p_to_real = this.checkDiapason(this.coords.p_to_real, this.configuration.to_min, this.configuration.to_max);
                 this.coords.p_to_real = this.checkMinInterval(this.coords.p_to_real, this.coords.p_from_real, 'to');
                 this.coords.p_to_fake = this.convertToFakePercent(this.coords.p_to_real);
 
                 break;
 
             case 'both_one':
-                if (this.options.from_fixed || this.options.to_fixed) {
-                    break;
-                }
-
-                const real_x = this.convertToRealPercent(handle_x),
-                    from = this.result.from_percent,
-                    to = this.result.to_percent,
-                    full = to - from,
-                    half = full / 2;
-
-                let new_from = real_x - half,
-                    new_to = real_x + half;
-
-                if (new_from < 0) {
-                    new_from = 0;
-                    new_to = new_from + full;
-                }
-
-                if (new_to > 100) {
-                    new_to = 100;
-                    new_from = new_to - full;
-                }
-
-                this.coords.p_from_real = this.calcWithStep(new_from);
-                this.coords.p_from_real = this.checkDiapason(this.coords.p_from_real, this.options.from_min, this.options.from_max);
-                this.coords.p_from_fake = this.convertToFakePercent(this.coords.p_from_real);
-
-                this.coords.p_to_real = this.calcWithStep(new_to);
-                this.coords.p_to_real = this.checkDiapason(this.coords.p_to_real, this.options.to_min, this.options.to_max);
-                this.coords.p_to_fake = this.convertToFakePercent(this.coords.p_to_real);
-
+                this.calcForBothOneTarget(this.convertToRealPercent(handle_x));
                 break;
         }
 
-        if (this.options.type === 'single') {
+        if (this.configuration.type === 'single') {
             this.coords.p_bar_x = (this.coords.p_handle / 2);
             this.coords.p_bar_w = this.coords.p_single_fake;
 
@@ -1051,8 +869,8 @@ export class Slider implements ISlider {
             this.result.from = this.convertToValue(this.coords.p_single_real);
             this.result.from_pretty = this._prettify(this.result.from);
 
-            if (this.options.values.length) {
-                this.result.from_value = this.options.values[this.result.from];
+            if (this.configuration.values.length) {
+                this.result.from_value = this.configuration.values[this.result.from];
             }
         } else {
             this.coords.p_bar_x = Slider.toFixed(this.coords.p_from_fake + (this.coords.p_handle / 2));
@@ -1065,14 +883,66 @@ export class Slider implements ISlider {
             this.result.to = this.convertToValue(this.coords.p_to_real);
             this.result.to_pretty = this._prettify(this.result.to);
 
-            if (this.options.values.length) {
-                this.result.from_value = this.options.values[this.result.from];
-                this.result.to_value = this.options.values[this.result.to];
+            if (this.configuration.values.length) {
+                this.result.from_value = this.configuration.values[this.result.from];
+                this.result.to_value = this.configuration.values[this.result.to];
             }
         }
 
         this.calcMinMax();
         this.calcLabels();
+    }
+
+    private calcForBaseTarget() {
+        const w = (this.configuration.max - this.configuration.min) / 100,
+            f = (this.result.from - this.configuration.min) / w,
+            t = (this.result.to - this.configuration.min) / w;
+
+        this.coords.p_single_real = Slider.toFixed(f);
+        this.coords.p_from_real = Slider.toFixed(f);
+        this.coords.p_to_real = Slider.toFixed(t);
+
+        this.coords.p_single_real = this.checkDiapason(this.coords.p_single_real, this.configuration.from_min, this.configuration.from_max);
+        this.coords.p_from_real = this.checkDiapason(this.coords.p_from_real, this.configuration.from_min, this.configuration.from_max);
+        this.coords.p_to_real = this.checkDiapason(this.coords.p_to_real, this.configuration.to_min, this.configuration.to_max);
+
+        this.coords.p_single_fake = this.convertToFakePercent(this.coords.p_single_real);
+        this.coords.p_from_fake = this.convertToFakePercent(this.coords.p_from_real);
+        this.coords.p_to_fake = this.convertToFakePercent(this.coords.p_to_real);
+
+        this.target = undefined;
+    }
+    
+    private calcForBothOneTarget(real_x: number) {
+        if (this.configuration.from_fixed || this.configuration.to_fixed) {
+            return;
+        }
+
+        const from = this.result.from_percent,
+            to = this.result.to_percent,
+            full = to - from,
+            half = full / 2;
+
+        let new_from = real_x - half,
+            new_to = real_x + half;
+
+        if (new_from < 0) {
+            new_from = 0;
+            new_to = new_from + full;
+        }
+
+        if (new_to > 100) {
+            new_to = 100;
+            new_from = new_to - full;
+        }
+
+        this.coords.p_from_real = this.calcWithStep(new_from);
+        this.coords.p_from_real = this.checkDiapason(this.coords.p_from_real, this.configuration.from_min, this.configuration.from_max);
+        this.coords.p_from_fake = this.convertToFakePercent(this.coords.p_from_real);
+
+        this.coords.p_to_real = this.calcWithStep(new_to);
+        this.coords.p_to_real = this.checkDiapason(this.coords.p_to_real, this.configuration.to_min, this.configuration.to_max);
+        this.coords.p_to_fake = this.convertToFakePercent(this.coords.p_to_real);
     }
 
     /**
@@ -1093,12 +963,12 @@ export class Slider implements ISlider {
         this.coords.p_pointer = Slider.toFixed(this.coords.x_pointer / this.coords.w_rs * 100);
     }
 
-    private convertToRealPercent(fake): number {
+    private convertToRealPercent(fake: number): number {
         const full = 100 - this.coords.p_handle;
         return fake / full * 100;
     }
 
-    private convertToFakePercent(real): number {
+    private convertToFakePercent(real: number): number {
         const full = 100 - this.coords.p_handle;
         return real / 100 * full;
     }
@@ -1117,7 +987,7 @@ export class Slider implements ISlider {
     }
 
     private calcHandlePercent(): void {
-        if (this.options.type === 'single') {
+        if (this.configuration.type === 'single') {
             this.coords.w_handle = Slider.outerWidth(this.cache.s_single, false);
         } else {
             this.coords.w_handle = Slider.outerWidth(this.cache.s_from, false);
@@ -1130,14 +1000,14 @@ export class Slider implements ISlider {
      * Find closest handle to pointer click
      */
     private chooseHandle(real_x: number): string {
-        if (this.options.type === 'single') {
+        if (this.configuration.type === 'single') {
             return 'single';
         } else {
             const m_point = this.coords.p_from_real + ((this.coords.p_to_real - this.coords.p_from_real) / 2);
             if (real_x >= m_point) {
-                return this.options.to_fixed ? 'from' : 'to';
+                return this.configuration.to_fixed ? 'from' : 'to';
             } else {
-                return this.options.from_fixed ? 'to' : 'from';
+                return this.configuration.from_fixed ? 'to' : 'from';
             }
         }
     }
@@ -1158,11 +1028,11 @@ export class Slider implements ISlider {
      * Measure labels width and X in percent
      */
     private calcLabels(): void {
-        if (!this.coords.w_rs || this.options.hide_from_to) {
+        if (!this.coords.w_rs || this.configuration.hide_from_to) {
             return;
         }
 
-        if (this.options.type === 'single') {
+        if (this.configuration.type === 'single') {
 
             this.labels.w_single = Slider.outerWidth(this.cache.single, false);
             this.labels.p_single_fake = this.labels.w_single / this.coords.w_rs * 100;
@@ -1202,13 +1072,13 @@ export class Slider implements ISlider {
     private updateScene(): void {
         if (this.raf_id) {
             cancelAnimationFrame(this.raf_id);
-            this.raf_id = null;
+            this.raf_id = undefined;
         }
 
         clearTimeout(this.update_tm);
-        this.update_tm = null;
+        this.update_tm = undefined;
 
-        if (!this.options) {
+        if (!this.configuration) {
             return;
         }
 
@@ -1217,7 +1087,7 @@ export class Slider implements ISlider {
         if (this.is_active) {
             this.raf_id = requestAnimationFrame(this.updateScene.bind(this));
         } else {
-            this.update_tm = setTimeout(this.updateScene.bind(this), 300);
+            this.update_tm = window.setTimeout(this.updateScene.bind(this), 300);
         }
     }
 
@@ -1240,7 +1110,7 @@ export class Slider implements ISlider {
             this.setMinMax();
             this.calc(true);
             this.drawLabels();
-            if (this.options.grid) {
+            if (this.configuration.grid) {
                 this.calcGridMargin();
                 this.calcGridLabels();
             }
@@ -1261,28 +1131,28 @@ export class Slider implements ISlider {
 
             this.drawLabels();
 
-            this.cache.bar.style.left = this.coords.p_bar_x + '%';
-            this.cache.bar.style.width = this.coords.p_bar_w + '%';
+            this.cache.bar!.style.left = this.coords.p_bar_x + '%';
+            this.cache.bar!.style.width = this.coords.p_bar_w + '%';
 
-            if (this.options.type === 'single') {
-                this.cache.bar.style.left = 0;
-                this.cache.bar.style.width = this.coords.p_bar_w + this.coords.p_bar_x + '%';
+            if (this.configuration.type === 'single') {
+                this.cache.bar!.style.left = "0";
+                this.cache.bar!.style.width = this.coords.p_bar_w + this.coords.p_bar_x + '%';
 
-                this.cache.s_single.style.left = this.coords.p_single_fake + '%';
+                this.cache.s_single!.style.left = this.coords.p_single_fake + '%';
 
-                this.cache.single.style.left = this.labels.p_single_left + '%';
+                this.cache.single!.style.left = this.labels.p_single_left + '%';
             } else {
-                this.cache.s_from.style.left = this.coords.p_from_fake + '%';
-                this.cache.s_to.style.left = this.coords.p_to_fake + '%';
+                this.cache.s_from!.style.left = this.coords.p_from_fake + '%';
+                this.cache.s_to!.style.left = this.coords.p_to_fake + '%';
 
                 if (this.old_from !== this.result.from || this.force_redraw) {
-                    this.cache.from.style.left = this.labels.p_from_left + '%';
+                    this.cache.from!.style.left = this.labels.p_from_left + '%';
                 }
                 if (this.old_to !== this.result.to || this.force_redraw) {
-                    this.cache.to.style.left = this.labels.p_to_left + '%';
+                    this.cache.to!.style.left = this.labels.p_to_left + '%';
                 }
 
-                this.cache.single.style.left = this.labels.p_single_left + '%';
+                this.cache.single!.style.left = this.labels.p_single_left + '%';
             }
 
             this.writeToInput();
@@ -1323,84 +1193,83 @@ export class Slider implements ISlider {
      * collapse close labels
      */
     private drawLabels(): void {
-        if (!this.options) {
+        if (!this.configuration) {
             return;
         }
 
-        const values_num = this.options.values.length;
-        const p_values = this.options.p_values;
+        const values_num = this.configuration.values.length;
+        const p_values = this.configuration.p_values;
         let text_single;
         let text_from;
         let text_to;
         let from_pretty;
         let to_pretty;
 
-        if (this.options.hide_from_to) {
+        if (this.configuration.hide_from_to) {
             return;
         }
 
-        if (this.options.type === 'single') {
+        if (this.configuration.type === 'single') {
 
             if (values_num) {
                 text_single = this.decorate(p_values[this.result.from]);
-                this.cache.single.innerHTML = text_single;
+                this.cache.single!.innerHTML = text_single;
             } else {
                 from_pretty = this._prettify(this.result.from);
 
                 text_single = this.decorate(from_pretty, this.result.from);
-                this.cache.single.innerHTML = text_single;
+                this.cache.single!.innerHTML = text_single;
             }
 
             this.calcLabels();
 
             if (this.labels.p_single_left < this.labels.p_min + 1) {
-                this.cache.min.style.visibility = 'hidden';
+                this.cache.min!.style.visibility = 'hidden';
             } else {
-                this.cache.min.style.visibility = 'visible';
+                this.cache.min!.style.visibility = 'visible';
             }
 
             if (this.labels.p_single_left + this.labels.p_single_fake > 100 - this.labels.p_max - 1) {
-                this.cache.max.style.visibility = 'hidden';
+                this.cache.max!.style.visibility = 'hidden';
             } else {
-                this.cache.max.style.visibility = 'visible';
+                this.cache.max!.style.visibility = 'visible';
             }
 
         } else {
-
             if (values_num) {
 
-                if (this.options.decorate_both) {
+                if (this.configuration.decorate_both) {
                     text_single = this.decorate(p_values[this.result.from]);
-                    text_single += this.options.values_separator;
+                    text_single += this.configuration.values_separator;
                     text_single += this.decorate(p_values[this.result.to]);
                 } else {
-                    text_single = this.decorate(p_values[this.result.from] + this.options.values_separator + p_values[this.result.to]);
+                    text_single = this.decorate(p_values[this.result.from] + this.configuration.values_separator + p_values[this.result.to]);
                 }
                 text_from = this.decorate(p_values[this.result.from]);
                 text_to = this.decorate(p_values[this.result.to]);
 
-                this.cache.single.innerHTML = text_single;
-                this.cache.from.innerHTML = text_from;
-                this.cache.to.innerHTML = text_to;
+
+                this.cache.single!.innerHTML = text_single;
+                this.cache.from!.innerHTML = text_from;
+                this.cache.to!.innerHTML = text_to;
 
             } else {
                 from_pretty = this._prettify(this.result.from);
                 to_pretty = this._prettify(this.result.to);
-
-                if (this.options.decorate_both) {
+                
+                if (this.configuration.decorate_both) {
                     text_single = this.decorate(from_pretty, this.result.from);
-                    text_single += this.options.values_separator;
+                    text_single += this.configuration.values_separator;
                     text_single += this.decorate(to_pretty, this.result.to);
                 } else {
-                    text_single = this.decorate(from_pretty + this.options.values_separator + to_pretty, this.result.to);
+                    text_single = this.decorate(from_pretty + this.configuration.values_separator + to_pretty, this.result.to);
                 }
                 text_from = this.decorate(from_pretty, this.result.from);
                 text_to = this.decorate(to_pretty, this.result.to);
 
-                this.cache.single.innerHTML = text_single;
-                this.cache.from.innerHTML = text_from;
-                this.cache.to.innerHTML = text_to;
-
+                this.cache.single!.innerHTML = text_single;
+                this.cache.from!.innerHTML = text_from;
+                this.cache.to!.innerHTML = text_to;
             }
 
             this.calcLabels();
@@ -1411,42 +1280,42 @@ export class Slider implements ISlider {
             let max = Math.max(single_left, to_left);
 
             if (this.labels.p_from_left + this.labels.p_from_fake >= this.labels.p_to_left) {
-                this.cache.from.style.visibility = 'hidden';
-                this.cache.to.style.visibility = 'hidden';
-                this.cache.single.style.visibility = 'visible';
+                this.cache.from!.style.visibility = 'hidden';
+                this.cache.to!.style.visibility = 'hidden';
+                this.cache.single!.style.visibility = 'visible';
 
                 if (this.result.from === this.result.to) {
                     if (this.target === 'from') {
-                        this.cache.from.style.visibility = 'visible';
+                        this.cache.from!.style.visibility = 'visible';
                     } else if (this.target === 'to') {
-                        this.cache.to.style.visibility = 'visible';
+                        this.cache.to!.style.visibility = 'visible';
                     } else if (!this.target) {
-                        this.cache.from.style.visibility = 'visible';
+                        this.cache.from!.style.visibility = 'visible';
                     }
-                    this.cache.single.style.visibility = 'hidden';
+                    this.cache.single!.style.visibility = 'hidden';
                     max = to_left;
                 } else {
-                    this.cache.from.style.visibility = 'hidden';
-                    this.cache.to.style.visibility = 'hidden';
-                    this.cache.single.style.visibility = 'visible';
+                    this.cache.from!.style.visibility = 'hidden';
+                    this.cache.to!.style.visibility = 'hidden';
+                    this.cache.single!.style.visibility = 'visible';
                     max = Math.max(single_left, to_left);
                 }
             } else {
-                this.cache.from.style.visibility = 'visible';
-                this.cache.to.style.visibility = 'visible';
-                this.cache.single.style.visibility = 'hidden';
+                this.cache.from!.style.visibility = 'visible';
+                this.cache.to!.style.visibility = 'visible';
+                this.cache.single!.style.visibility = 'hidden';
             }
 
             if (min < this.labels.p_min + 1) {
-                this.cache.min.style.visibility = 'hidden';
+                this.cache.min!.style.visibility = 'hidden';
             } else {
-                this.cache.min.style.visibility = 'visible';
+                this.cache.min!.style.visibility = 'visible';
             }
 
             if (max > 100 - this.labels.p_max - 1) {
-                this.cache.max.style.visibility = 'hidden';
+                this.cache.max!.style.visibility = 'hidden';
             } else {
-                this.cache.max.style.visibility = 'visible';
+                this.cache.max!.style.visibility = 'visible';
             }
 
         }
@@ -1456,7 +1325,7 @@ export class Slider implements ISlider {
      * Draw shadow intervals
      */
     private drawShadow(): void {
-        const o = this.options,
+        const o = this.configuration,
             c = this.cache,
 
             is_from_min = typeof o.from_min === 'number' && !isNaN(o.from_min),
@@ -1474,11 +1343,11 @@ export class Slider implements ISlider {
                 from_max = Slider.toFixed(from_max - (this.coords.p_handle / 100 * from_max));
                 from_min = from_min + (this.coords.p_handle / 2);
 
-                c.shad_single.style.display = 'block';
-                c.shad_single.style.left = from_min + '%';
-                c.shad_single.style.width = from_max + '%';
+                c.shad_single!.style.display = 'block';
+                c.shad_single!.style.left = from_min + '%';
+                c.shad_single!.style.width = from_max + '%';
             } else {
-                c.shad_single.style.display = 'none';
+                c.shad_single!.style.display = 'none';
             }
         } else {
             if (o.from_shadow && (is_from_min || is_from_max)) {
@@ -1488,11 +1357,11 @@ export class Slider implements ISlider {
                 from_max = Slider.toFixed(from_max - (this.coords.p_handle / 100 * from_max));
                 from_min = from_min + (this.coords.p_handle / 2);
 
-                c.shad_from.style.display = 'block';
-                c.shad_from.style.left = from_min + '%';
-                c.shad_from.style.width = from_max + '%';
+                c.shad_from!.style.display = 'block';
+                c.shad_from!.style.left = from_min + '%';
+                c.shad_from!.style.width = from_max + '%';
             } else {
-                c.shad_from.style.display = 'none';
+                c.shad_from!.style.display = 'none';
             }
 
             if (o.to_shadow && (is_to_min || is_to_max)) {
@@ -1502,11 +1371,11 @@ export class Slider implements ISlider {
                 to_max = Slider.toFixed(to_max - (this.coords.p_handle / 100 * to_max));
                 to_min = to_min + (this.coords.p_handle / 2);
 
-                c.shad_to.style.display = 'block';
-                c.shad_to.style.left = to_min + '%';
-                c.shad_to.style.width = to_max + '%';
+                c.shad_to!.style.display = 'block';
+                c.shad_to!.style.left = to_min + '%';
+                c.shad_to!.style.width = to_max + '%';
             } else {
-                c.shad_to.style.display = 'none';
+                c.shad_to!.style.display = 'none';
             }
         }
     }
@@ -1515,21 +1384,21 @@ export class Slider implements ISlider {
      * Write values to input element
      */
     private writeToInput(): void {
-        if (this.options.type === 'single') {
-            if (this.options.values.length) {
-                this.cache.input.value = this.result.from_value;
+        if (this.configuration.type === 'single') {
+            if (this.configuration.values.length) {
+                this.cache.input!.value = typeof this.result.from_value === "number" ? this.result.from_value.toString(10) : this.result.from_value;
             } else {
-                this.cache.input.value = this.result.from;
+                this.cache.input!.value = this.result.from.toString(10);
             }
-            this.cache.input.dataset.from = this.result.from;
+            this.cache.input!.dataset.from = this.result.from.toString(10);
         } else {
-            if (this.options.values.length) {
-                this.cache.input.value = this.result.from_value + this.options.input_values_separator + this.result.to_value;
+            if (this.configuration.values.length) {
+                this.cache.input!.value = this.result.from_value + this.configuration.input_values_separator + this.result.to_value;
             } else {
-                this.cache.input.value = this.result.from + this.options.input_values_separator + this.result.to;
+                this.cache.input!.value = this.result.from + this.configuration.input_values_separator + this.result.to;
             }
-            this.cache.input.dataset.from = this.result.from;
-            this.cache.input.dataset.to = this.result.to;
+            this.cache.input!.dataset.from = this.result.from.toString(10);
+            this.cache.input!.dataset.to = this.result.to.toString(10);
         }
     }
 
@@ -1540,11 +1409,11 @@ export class Slider implements ISlider {
     private callOnStart(): void {
         this.writeToInput();
 
-        if (this.options.onStart && typeof this.options.onStart === 'function') {
-            if (this.options.scope) {
-                this.options.onStart.call(this.options.scope, this.result);
+        if (this.configuration.onStart && typeof this.configuration.onStart === 'function') {
+            if (this.configuration.scope) {
+                this.configuration.onStart.call(this.configuration.scope, this.result);
             } else {
-                this.options.onStart(this.result);
+                this.configuration.onStart(this.result);
             }
         }
     }
@@ -1552,11 +1421,11 @@ export class Slider implements ISlider {
     private callOnChange(): void {
         this.writeToInput();
 
-        if (this.options.onChange && typeof this.options.onChange === 'function') {
-            if (this.options.scope) {
-                this.options.onChange.call(this.options.scope, this.result);
+        if (this.configuration.onChange && typeof this.configuration.onChange === 'function') {
+            if (this.configuration.scope) {
+                this.configuration.onChange.call(this.configuration.scope, this.result);
             } else {
-                this.options.onChange(this.result);
+                this.configuration.onChange(this.result);
             }
         }
     }
@@ -1564,11 +1433,11 @@ export class Slider implements ISlider {
     private callOnFinish(): void {
         this.writeToInput();
 
-        if (this.options.onFinish && typeof this.options.onFinish === 'function') {
-            if (this.options.scope) {
-                this.options.onFinish.call(this.options.scope, this.result);
+        if (this.configuration.onFinish && typeof this.configuration.onFinish === 'function') {
+            if (this.configuration.scope) {
+                this.configuration.onFinish.call(this.configuration.scope, this.result);
             } else {
-                this.options.onFinish(this.result);
+                this.configuration.onFinish(this.result);
             }
         }
     }
@@ -1576,11 +1445,11 @@ export class Slider implements ISlider {
     private callOnUpdate(): void {
         this.writeToInput();
 
-        if (this.options.onUpdate && typeof this.options.onUpdate === 'function') {
-            if (this.options.scope) {
-                this.options.onUpdate.call(this.options.scope, this.result);
+        if (this.configuration.onUpdate && typeof this.configuration.onUpdate === 'function') {
+            if (this.configuration.scope) {
+                this.configuration.onUpdate.call(this.configuration.scope, this.result);
             } else {
-                this.options.onUpdate(this.result);
+                this.configuration.onUpdate(this.result);
             }
         }
     }
@@ -1590,12 +1459,12 @@ export class Slider implements ISlider {
     // =============================================================================================================
 
     private toggleInput(): void {
-        this.cache.input.classList.toggle('irs-hidden-input');
+        this.cache.input!.classList.toggle('irs-hidden-input');
 
         if (this.has_tab_index) {
-            this.cache.input.tabindex = -1;
+            this.cache.input!.tabIndex = -1;
         } else {
-            this.cache.input.removeAttribute('tabindex');
+            this.cache.input!.removeAttribute('tabindex');
         }
 
         this.has_tab_index = !this.has_tab_index;
@@ -1605,9 +1474,9 @@ export class Slider implements ISlider {
      * Convert real value to percent
      */
     private convertToPercent(value: number, no_min = false): number {
-        const diapason = this.options.max - this.options.min,
+        const diapason = this.configuration.max - this.configuration.min,
             one_percent = diapason / 100;
-        let val, percent;
+        let val;
 
         if (!diapason) {
             this.no_diapason = true;
@@ -1617,20 +1486,18 @@ export class Slider implements ISlider {
         if (no_min) {
             val = value;
         } else {
-            val = value - this.options.min;
+            val = value - this.configuration.min;
         }
 
-        percent = val / one_percent;
-
-        return Slider.toFixed(percent);
+        return Slider.toFixed(val / one_percent);
     }
 
     /**
      * Convert percent to real values
      */
     private convertToValue(percent: number): number {
-        let min = this.options.min,
-            max = this.options.max,
+        let min = this.configuration.min,
+            max = this.configuration.max,
             min_length, max_length,
             avg_decimals = 0,
             abs = 0;
@@ -1639,10 +1506,10 @@ export class Slider implements ISlider {
             max_decimals = max.toString().split('.')[1];
 
         if (percent === 0) {
-            return this.options.min;
+            return this.configuration.min;
         }
         if (percent === 100) {
-            return this.options.max;
+            return this.configuration.max;
         }
 
 
@@ -1666,13 +1533,13 @@ export class Slider implements ISlider {
 
         let number = ((max - min) / 100 * percent) + min,
             result;
-        const string = this.options.step.toString().split('.')[1];
+        const string = this.configuration.step.toString().split('.')[1];
 
         if (string) {
             number = +number.toFixed(string.length);
         } else {
-            number = number / this.options.step;
-            number = number * this.options.step;
+            number = number / this.configuration.step;
+            number = number * this.configuration.step;
 
             number = +number.toFixed(0);
         }
@@ -1687,10 +1554,10 @@ export class Slider implements ISlider {
             result = Slider.toFixed(number);
         }
 
-        if (result < this.options.min) {
-            result = this.options.min;
-        } else if (result > this.options.max) {
-            result = this.options.max;
+        if (result < this.configuration.min) {
+            result = this.configuration.min;
+        } else if (result > this.configuration.max) {
+            result = this.configuration.max;
         }
 
         return result;
@@ -1713,15 +1580,15 @@ export class Slider implements ISlider {
     }
 
     private checkMinInterval(p_current, p_next, type): number {
-        const o = this.options;
-        let current, next;
+        const o = this.configuration;
+        let current;
 
         if (!o.min_interval) {
             return p_current;
         }
 
         current = this.convertToValue(p_current);
-        next = this.convertToValue(p_next);
+        const next = this.convertToValue(p_next);
 
         if (type === 'from') {
 
@@ -1741,15 +1608,15 @@ export class Slider implements ISlider {
     }
 
     private checkMaxInterval(p_current, p_next, type): number {
-        const o = this.options;
-        let current, next;
+        const o = this.configuration;
+        let current;
 
         if (!o.max_interval) {
             return p_current;
         }
 
         current = this.convertToValue(p_current);
-        next = this.convertToValue(p_next);
+        const next = this.convertToValue(p_next);
 
         if (type === 'from') {
 
@@ -1770,7 +1637,7 @@ export class Slider implements ISlider {
 
     private checkDiapason(p_num: number, min: number, max: number) {
         let num = this.convertToValue(p_num);
-        const o = this.options;
+        const o = this.configuration;
 
         if (typeof min !== 'number') {
             min = o.min;
@@ -1795,26 +1662,9 @@ export class Slider implements ISlider {
         num = num.toFixed(20);
         return +num;
     }
-
-    private _prettify(num: number): string {
-        if (!this.options.prettify_enabled) {
-            return num.toString();
-        }
-
-        if (this.options.prettify && typeof this.options.prettify === 'function') {
-            return this.options.prettify(num);
-        } else {
-            return this.prettify(num);
-        }
-    }
-
-    private prettify(num: number): string {
-        const n = num.toString();
-        return n.replace(/(\d{1,3}(?=(?:\d\d\d)+(?!\d)))/g, '$1' + this.options.prettify_separator);
-    }
-
+    
     private checkEdges(left: number, width: number): number {
-        if (!this.options.force_edges) {
+        if (!this.configuration.force_edges) {
             return Slider.toFixed(left);
         }
 
@@ -1827,148 +1677,9 @@ export class Slider implements ISlider {
         return Slider.toFixed(left);
     }
 
-    private validate(): void {
-        const o = this.options,
-            r = this.result,
-            v = o.values,
-            vl = v.length;
-        let value, i;
-
-        if (typeof o.min === 'string') o.min = +o.min;
-        if (typeof o.max === 'string') o.max = +o.max;
-        if (typeof o.from === 'string') o.from = +o.from;
-        if (typeof o.to === 'string') o.to = +o.to;
-        if (typeof o.step === 'string') o.step = +o.step;
-
-        if (typeof o.from_min === 'string') o.from_min = +o.from_min;
-        if (typeof o.from_max === 'string') o.from_max = +o.from_max;
-        if (typeof o.to_min === 'string') o.to_min = +o.to_min;
-        if (typeof o.to_max === 'string') o.to_max = +o.to_max;
-
-        if (typeof o.grid_num === 'string') o.grid_num = +o.grid_num;
-
-        if (o.max < o.min) {
-            o.max = o.min;
-        }
-
-        if (vl) {
-            o.p_values = [];
-            o.min = 0;
-            o.max = vl - 1;
-            o.step = 1;
-            o.grid_num = o.max;
-            o.grid_snap = true;
-
-            for (i = 0; i < vl; i++) {
-                value = +v[i];
-
-                if (!isNaN(value)) {
-                    console.log({v, i, value});
-                    v[i] = value;
-                    value = this._prettify(value);
-                } else {
-                    value = v[i];
-                }
-
-                o.p_values.push(value);
-            }
-        }
-
-        if (typeof o.from !== 'number' || isNaN(o.from)) {
-            o.from = o.min;
-        }
-
-        if (typeof o.to !== 'number' || isNaN(o.to)) {
-            o.to = o.max;
-        }
-
-        if (o.type === 'single') {
-
-            if (o.from < o.min) o.from = o.min;
-            if (o.from > o.max) o.from = o.max;
-
-        } else {
-
-            if (o.from < o.min) o.from = o.min;
-            if (o.from > o.max) o.from = o.max;
-
-            if (o.to < o.min) o.to = o.min;
-            if (o.to > o.max) o.to = o.max;
-
-            if (this.update_check.from) {
-
-                if (this.update_check.from !== o.from) {
-                    if (o.from > o.to) o.from = o.to;
-                }
-                if (this.update_check.to !== o.to) {
-                    if (o.to < o.from) o.to = o.from;
-                }
-
-            }
-
-            if (o.from > o.to) o.from = o.to;
-            if (o.to < o.from) o.to = o.from;
-
-        }
-
-        if (typeof o.step !== 'number' || isNaN(o.step) || !o.step || o.step < 0) {
-            o.step = 1;
-        }
-
-        if (typeof o.from_min === 'number' && o.from < o.from_min) {
-            o.from = o.from_min;
-        }
-
-        if (typeof o.from_max === 'number' && o.from > o.from_max) {
-            o.from = o.from_max;
-        }
-
-        if (typeof o.to_min === 'number' && o.to < o.to_min) {
-            o.to = o.to_min;
-        }
-
-        if (typeof o.to_max === 'number' && o.from > o.to_max) {
-            o.to = o.to_max;
-        }
-
-        if (r) {
-            if (r.min !== o.min) {
-                r.min = o.min;
-            }
-
-            if (r.max !== o.max) {
-                r.max = o.max;
-            }
-
-            if (r.from < r.min || r.from > r.max) {
-                r.from = o.from;
-            }
-
-            if (r.to < r.min || r.to > r.max) {
-                r.to = o.to;
-            }
-        }
-
-        if (typeof o.min_interval !== 'number' || isNaN(o.min_interval) || !o.min_interval || o.min_interval < 0) {
-            o.min_interval = 0;
-        }
-
-        if (typeof o.max_interval !== 'number' || isNaN(o.max_interval) || !o.max_interval || o.max_interval < 0) {
-            o.max_interval = 0;
-        }
-
-        if (o.min_interval && o.min_interval > o.max - o.min) {
-            o.min_interval = o.max - o.min;
-        }
-
-        if (o.max_interval && o.max_interval > o.max - o.min) {
-            o.max_interval = o.max - o.min;
-        }
-    }
-
     private decorate(num: number | string, original?: number): string {
         let decorated = '';
-        const o = this.options;
+        const o = this.configuration;
 
         if (o.prefix) {
             decorated += o.prefix;
@@ -1998,26 +1709,26 @@ export class Slider implements ISlider {
     }
 
     private updateFrom(): void {
-        this.result.from = this.options.from;
+        this.result.from = this.configuration.from;
         this.result.from_percent = this.convertToPercent(this.result.from);
         this.result.from_pretty = this._prettify(this.result.from);
-        if (this.options.values) {
-            this.result.from_value = this.options.values[this.result.from];
+        if (this.configuration.values) {
+            this.result.from_value = this.configuration.values[this.result.from];
         }
     }
 
     private updateTo(): void {
-        this.result.to = this.options.to;
+        this.result.to = this.configuration.to;
         this.result.to_percent = this.convertToPercent(this.result.to);
         this.result.to_pretty = this._prettify(this.result.to);
-        if (this.options.values) {
-            this.result.to_value = this.options.values[this.result.to];
+        if (this.configuration.values) {
+            this.result.to_value = this.configuration.values[this.result.to];
         }
     }
 
     private updateResult(): void {
-        this.result.min = this.options.min;
-        this.result.max = this.options.max;
+        this.result.min = this.configuration.min;
+        this.result.max = this.configuration.max;
         this.updateFrom();
         this.updateTo();
     }
@@ -2027,16 +1738,15 @@ export class Slider implements ISlider {
     // =============================================================================================================
 
     private appendGrid(): void {
-        if (!this.options.grid) {
+        if (!this.configuration.grid) {
             return;
         }
 
-        const o = this.options,
+        const o = this.configuration,
 
             total = o.max - o.min;
 
         let big_num = o.grid_num,
-            big_p: number,
             small_max = 4,
             big_w = 0,
             small_w = 0,
@@ -2051,7 +1761,7 @@ export class Slider implements ISlider {
         }
 
         if (big_num > 50) big_num = 50;
-        big_p = Slider.toFixed(100 / big_num);
+        const big_p = Slider.toFixed(100 / big_num);
 
         if (big_num > 4) {
             small_max = 3;
@@ -2102,8 +1812,8 @@ export class Slider implements ISlider {
         this.coords.big_num = Math.ceil(big_num + 1);
 
 
-        this.cache.cont.classList.toggle('irs-with-grid');
-        this.cache.grid.innerHTML = html;
+        this.cache.cont!.classList.toggle('irs-with-grid');
+        this.cache.grid!.innerHTML = html;
         this.cacheGridLabels();
     }
 
@@ -2112,8 +1822,11 @@ export class Slider implements ISlider {
         const num = this.coords.big_num;
 
         for (i = 0; i < num; i++) {
-            $label = this.cache.grid.querySelector('.js-grid-text-' + i);
-            this.cache.grid_labels.push($label);
+            $label = this.cache.grid!.querySelector('.js-grid-text-' + i);
+            if (!$label) {
+                continue;
+            }
+            this.cache.grid_labels.push($label as HTMLHtmlElement);
         }
 
         this.calcGridLabels();
@@ -2132,7 +1845,7 @@ export class Slider implements ISlider {
             finish[i] = Slider.toFixed(start[i] + this.coords.big_p[i]);
         }
 
-        if (this.options.force_edges) {
+        if (this.configuration.force_edges) {
             if (start[0] < -this.coords.grid_gap) {
                 start[0] = -this.coords.grid_gap;
                 finish[0] = Slider.toFixed(start[0] + this.coords.big_p[0]);
@@ -2181,7 +1894,7 @@ export class Slider implements ISlider {
     }
 
     private calcGridMargin(): void {
-        if (!this.options.grid_margin) {
+        if (!this.configuration.grid_margin) {
             return;
         }
 
@@ -2190,7 +1903,7 @@ export class Slider implements ISlider {
             return;
         }
 
-        if (this.options.type === 'single') {
+        if (this.configuration.type === 'single') {
             this.coords.w_handle = Slider.outerWidth(this.cache.s_single, false);
         } else {
             this.coords.w_handle = Slider.outerWidth(this.cache.s_from, false);
@@ -2198,28 +1911,31 @@ export class Slider implements ISlider {
         this.coords.p_handle = Slider.toFixed(this.coords.w_handle / this.coords.w_rs * 100);
         this.coords.grid_gap = Slider.toFixed((this.coords.p_handle / 2) - 0.1);
 
-        this.cache.grid.style.width = Slider.toFixed(100 - this.coords.p_handle) + '%';
-        this.cache.grid.style.left = this.coords.grid_gap + '%';
+        this.cache.grid!.style.width = Slider.toFixed(100 - this.coords.p_handle) + '%';
+        this.cache.grid!.style.left = this.coords.grid_gap + '%';
     }
 
+    private _prettify(value: number): string {
+        return RangeSliderConfigurationUtil.prettify(this.configuration, value);
+    }
+    
     // =============================================================================================================
     // Public methods
     // =============================================================================================================
 
-    update(options?: any): void {
+    update(options?: Partial<IRangeSliderConfiguration>): void {
         if (!this.input) {
             return;
         }
 
         this.is_update = true;
 
-        this.options.from = this.result.from;
-        this.options.to = this.result.to;
-        this.update_check.from = this.result.from;
-        this.update_check.to = this.result.to;
+        this.configuration.from = this.result.from;
+        this.configuration.to = this.result.to;
+        this.update_check = {from: this.result.from, to: this.result.to};
 
-        this.options = Object.assign({}, this.options, options);
-        this.validate();
+        // this.configuration = Object.assign({}, this.configuration, options);
+        this.configuration = RangeSliderConfigurationUtil.mergeConfigurations(this.configuration, options, this.update_check);
         this.updateResult();
 
         this.toggleInput();
@@ -2242,72 +1958,72 @@ export class Slider implements ISlider {
         }
 
         this.toggleInput();
-        this.cache.input.readonly = false;
+        this.cache.input!.readOnly = false;
         // this.input.dataset.ionRangeSlider = null;
 
         this.remove();
-        this.input = null;
-        this.options = null;
+        this.input = undefined;
+        this.configuration = undefined;
     }
 
-    private unbindEvens(): void {
+    private unbindEvents(): void {
         if (this.no_diapason) {
             return;
         }
 
-        this.cache.body.removeEventListener('touchmove', e => this.pointerMove(e));
-        this.cache.body.removeEventListener('mousemove', e => this.pointerMove(e));
-        this.cache.win.removeEventListener('touchend', e => this.pointerUp(e));
-        this.cache.win.removeEventListener('mouseup', e => this.pointerUp(e));
-        this.cache.line.removeEventListener('touchstart', e => this.pointerClick('click', e));
-        this.cache.line.removeEventListener('mousedown', e => this.pointerClick('click', e));
-        this.cache.line.removeEventListener('focus', e => this.pointerFocus(e));
+        this.cache.body.removeEventListener('touchmove', (e: TouchEvent) => this.pointerMove(e));
+        this.cache.body.removeEventListener('mousemove', (e: MouseEvent) => this.pointerMove(e));
+        this.cache.win.removeEventListener('touchend', (e: TouchEvent) => this.pointerUp(e));
+        this.cache.win.removeEventListener('mouseup', (e: MouseEvent) => this.pointerUp(e));
+        this.cache.line!.removeEventListener('touchstart', (e: TouchEvent) => this.pointerClick('click', e));
+        this.cache.line!.removeEventListener('mousedown', (e: MouseEvent) => this.pointerClick('click', e));
+        this.cache.line!.removeEventListener('focus', (e: FocusEvent) => this.pointerFocus(e));
 
-        if (this.options.drag_interval && this.options.type === 'double') {
-            this.cache.bar.removeEventListener('touchstart', e => this.pointerDown('both', e));
-            this.cache.bar.removeEventListener('mousedown', e => this.pointerDown('both', e));
+        if (this.configuration.drag_interval && this.configuration.type === 'double') {
+            this.cache.bar!.removeEventListener('touchstart', (e: TouchEvent) => this.pointerDown('both', e));
+            this.cache.bar!.removeEventListener('mousedown', (e: MouseEvent) => this.pointerDown('both', e));
         } else {
-            this.cache.bar.removeEventListener('touchstart', e => this.pointerClick('click', e));
-            this.cache.bar.removeEventListener('mousedown', e => this.pointerClick('click', e));
+            this.cache.bar!.removeEventListener('touchstart', (e: TouchEvent) => this.pointerClick('click', e));
+            this.cache.bar!.removeEventListener('mousedown', (e: MouseEvent) => this.pointerClick('click', e));
         }
 
-        if (this.options.type === 'single') {
-            this.cache.single.removeEventListener('touchstart', e => this.pointerDown('single', e));
-            this.cache.s_single.removeEventListener('touchstart', e => this.pointerDown('single', e));
-            this.cache.shad_single.removeEventListener('touchstart', e => this.pointerClick('click', e));
+        if (this.configuration.type === 'single') {
+            this.cache.single!.removeEventListener('touchstart', (e: TouchEvent) => this.pointerDown('single', e));
+            this.cache.s_single!.removeEventListener('touchstart', (e: TouchEvent) => this.pointerDown('single', e));
+            this.cache.shad_single!.removeEventListener('touchstart', (e: TouchEvent) => this.pointerClick('click', e));
 
-            this.cache.single.removeEventListener('mousedown', e => this.pointerDown('single', e));
-            this.cache.s_single.removeEventListener('mousedown', e => this.pointerDown('single', e));
-            this.cache.shad_single.removeEventListener('mousedown', e => this.pointerClick.bind('click', e));
+            this.cache.single!.removeEventListener('mousedown', (e: MouseEvent) => this.pointerDown('single', e));
+            this.cache.s_single!.removeEventListener('mousedown', (e: MouseEvent) => this.pointerDown('single', e));
+            this.cache.shad_single!.removeEventListener('mousedown', (e: MouseEvent) => this.pointerClick('click', e));
 
             if (this.cache.edge) {
-                this.cache.edge.removeEventListener('mousedown', e => this.pointerClick('click', e));
+                this.cache.edge.removeEventListener('mousedown', (e: MouseEvent) => this.pointerClick('click', e));
             }
         } else {
-            this.cache.single.removeEventListener('touchstart', e => this.pointerDown(null, e));
-            this.cache.single.removeEventListener('mousedown', e => this.pointerDown(null, e));
+            this.cache.single!.removeEventListener('touchstart', (e: TouchEvent) => this.pointerDown(null, e));
+            this.cache.single!.removeEventListener('mousedown', (e: MouseEvent) => this.pointerDown(null, e));
 
-            this.cache.from.removeEventListener('touchstart', e => this.pointerDown('from', e));
-            this.cache.s_from.removeEventListener('touchstart', e => this.pointerDown('from', e));
-            this.cache.to.removeEventListener('touchstart', e => this.pointerDown('to', e));
-            this.cache.s_to.removeEventListener('touchstart', e => this.pointerDown('to', e));
-            this.cache.shad_from.removeEventListener('touchstart', e => this.pointerClick('click', e));
-            this.cache.shad_to.removeEventListener('touchstart', e => this.pointerClick('click', e));
+            this.cache.from!.removeEventListener('touchstart', (e: TouchEvent) => this.pointerDown('from', e));
+            this.cache.s_from!.removeEventListener('touchstart', (e: TouchEvent) => this.pointerDown('from', e));
+            this.cache.to!.removeEventListener('touchstart', (e: TouchEvent) => this.pointerDown('to', e));
+            this.cache.s_to!.removeEventListener('touchstart', (e: TouchEvent) => this.pointerDown('to', e));
+            this.cache.shad_from!.removeEventListener('touchstart', (e: TouchEvent) => this.pointerClick('click', e));
+            this.cache.shad_to!.removeEventListener('touchstart', (e: TouchEvent) => this.pointerClick('click', e));
 
-            this.cache.from.removeEventListener('mousedown', e => this.pointerDown('from', e));
-            this.cache.s_from.removeEventListener('mousedown', e => this.pointerDown('from', e));
-            this.cache.to.removeEventListener('mousedown', e => this.pointerDown('to', e));
-            this.cache.s_to.removeEventListener('mousedown', e => this.pointerDown('to', e));
-            this.cache.shad_from.removeEventListener('mousedown', e => this.pointerClick('click', e));
-            this.cache.shad_to.removeEventListener('mousedown', e => this.pointerClick('click', e));
+            this.cache.from!.removeEventListener('mousedown', (e: MouseEvent) => this.pointerDown('from', e));
+            this.cache.s_from!.removeEventListener('mousedown', (e: MouseEvent) => this.pointerDown('from', e));
+            this.cache.to!.removeEventListener('mousedown', (e: MouseEvent) => this.pointerDown('to', e));
+            this.cache.s_to!.removeEventListener('mousedown', (e: MouseEvent) => this.pointerDown('to', e));
+            this.cache.shad_from!.removeEventListener('mousedown', (e: MouseEvent) => this.pointerClick('click', e));
+            this.cache.shad_to!.removeEventListener('mousedown', (e: MouseEvent) => this.pointerClick('click', e));
         }
 
-        if (this.options.keyboard) {
-            this.cache.line.removeEventListener('keydown', e => this.key('keyboard', e));
+        if (this.configuration.keyboard) {
+            this.cache.line!.removeEventListener('keydown', (e: KeyboardEvent) => this.key('keyboard', e));
         }
 
         if (Slider.getIsOldIe()) {
-            this.cache.body.removeEventListener('mouseup', e => this.pointerUp(e));
+            this.cache.body.removeEventListener('mouseup', (e: MouseEvent) => this.pointerUp(e));
             this.cache.body.removeEventListener('mouseleave', e => this.pointerUp(e));
         }
     }

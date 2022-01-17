@@ -1,3 +1,3 @@
-import * as TsIonRangeSlider  from './ts-ion-range-slider';
+export { SliderType } from './range-slider-configuration';
 
-export default TsIonRangeSlider;
+export * as RangeSlider  from './range-slider';

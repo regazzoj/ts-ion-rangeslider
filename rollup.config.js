@@ -4,13 +4,13 @@ import postcss from "rollup-plugin-postcss";
 
 import { style } from './package.json'
 
-const fileName = 'ts-ion-range-slider'
+const fileName = 'ts-range-slider'
 
 const commonConfig = {
     external: id => !/^[./]/.test(id),
     input: 'src/index.ts',
     output: {
-        name: 'TsIonRangeSlider',
+        name: 'TsRangeSlider',
         sourcemap: true
     },
     plugins: []
