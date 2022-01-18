@@ -2,7 +2,15 @@ import {IRangeSliderConfiguration} from "../interfaces/range-slider-configuratio
 import {SkinType, SliderType} from "../enums";
 
 export class RangeSliderConfigurationUtil {
-    private static defaultConfig: IRangeSliderConfiguration = {
+    private static defaultConfig: IRangeSliderConfiguration<number> = {
+        maxInterval: NaN,
+        minInterval: NaN,
+        from: NaN,
+        fromMax: NaN,
+        fromMin: NaN,
+        to: NaN,
+        toMax: NaN,
+        toMin: NaN,
         block: false,
         decorateBoth: true,
         disable: false,
@@ -31,9 +39,9 @@ export class RangeSliderConfigurationUtil {
         prettyValues: [],
         valuesSeparator: "-",
         dragInterval: false
-    }
+    };
 
-    public static initializeConfiguration(configuration: Partial<IRangeSliderConfiguration>, inputValues?: string): IRangeSliderConfiguration {
+    public static initializeConfiguration(configuration: Partial<IRangeSliderConfiguration<number | string>>, inputValues?: string): IRangeSliderConfiguration<number> {
         const configurationOutput = RangeSliderConfigurationUtil.mergeConfigurations(RangeSliderConfigurationUtil.defaultConfig, configuration);
         if (inputValues !== undefined && inputValues !== "") {
             const givenValues = inputValues.split(configuration.inputValuesSeparator || ";");
@@ -61,14 +69,12 @@ export class RangeSliderConfigurationUtil {
         return configurationOutput;
     }
 
-    public static mergeConfigurations(baseConfiguration: IRangeSliderConfiguration, newConfiguration: Partial<IRangeSliderConfiguration>, updateCheck?: { from: number; to: number }): IRangeSliderConfiguration {
-        const configurationOutput = {...baseConfiguration, ...newConfiguration};
-        RangeSliderConfigurationUtil.checkConfiguration(configurationOutput, updateCheck);
-        return configurationOutput;
+    public static mergeConfigurations(baseConfiguration: IRangeSliderConfiguration<number | string>, newConfiguration?: Partial<IRangeSliderConfiguration<number | string>>, updateCheck?: { from: number; to: number }): IRangeSliderConfiguration<number> {
+        const configurationOutput = RangeSliderConfigurationUtil.convertConfiguration({...baseConfiguration, ...newConfiguration});
+        return RangeSliderConfigurationUtil.checkConfiguration(configurationOutput, updateCheck);
     }
 
-    public static checkConfiguration(configuration: IRangeSliderConfiguration, updateCheck?: { from: number; to: number }): Partial<IRangeSliderConfiguration> {
-        // r = this.result
+    public static convertConfiguration(configuration: IRangeSliderConfiguration<number|string>): IRangeSliderConfiguration<number> {
         if (typeof configuration.min === "string") configuration.min = parseFloat(configuration.min);
         if (typeof configuration.max === "string") configuration.max = parseFloat(configuration.max);
         if (typeof configuration.from === "string") configuration.from = parseFloat(configuration.from);
@@ -82,17 +88,21 @@ export class RangeSliderConfigurationUtil {
 
         if (typeof configuration.gridNum === "string") configuration.gridNum = parseFloat(configuration.gridNum);
 
+        return configuration as IRangeSliderConfiguration<number>;
+    }
+
+    public static checkConfiguration(configuration: IRangeSliderConfiguration<number>, updateCheck?: { from: number; to: number }): IRangeSliderConfiguration<number> {
         if (configuration.max < configuration.min) {
             configuration.max = configuration.min;
         }
 
         RangeSliderConfigurationUtil.updatePrettyValues(configuration);
 
-        if (typeof configuration.from !== "number" || isNaN(configuration.from)) {
+        if (isNaN(configuration.from)) {
             configuration.from = configuration.min;
         }
 
-        if (typeof configuration.to !== "number" || isNaN(configuration.to)) {
+        if (isNaN(configuration.to)) {
             configuration.to = configuration.max;
         }
 
@@ -125,26 +135,27 @@ export class RangeSliderConfigurationUtil {
 
         }
 
-        if (typeof configuration.step !== "number" || isNaN(configuration.step) || !configuration.step || configuration.step < 0) {
+        if (isNaN(configuration.step) || !configuration.step || configuration.step < 0) {
             configuration.step = 1;
         }
 
-        if (typeof configuration.fromMin === "number" && configuration.from < configuration.fromMin) {
+        if (configuration.from < configuration.fromMin) {
             configuration.from = configuration.fromMin;
         }
 
-        if (typeof configuration.fromMax === "number" && configuration.from > configuration.fromMax) {
+        if (configuration.from > configuration.fromMax) {
             configuration.from = configuration.fromMax;
         }
 
-        if (typeof configuration.toMin === "number" && configuration.to < configuration.toMin) {
+        if (configuration.to < configuration.toMin) {
             configuration.to = configuration.toMin;
         }
 
-        if (typeof configuration.toMax === "number" && configuration.from > configuration.toMax) {
+        if (configuration.from > configuration.toMax) {
             configuration.to = configuration.toMax;
         }
 
+        // r = this.result
         // if (r) {
         //     if (r.min !== configuration.min) {
         //         r.min = configuration.min;
@@ -163,11 +174,11 @@ export class RangeSliderConfigurationUtil {
         //     }
         // }
 
-        if (typeof configuration.minInterval !== "number" || isNaN(configuration.minInterval) || !configuration.minInterval || configuration.minInterval < 0) {
+        if (isNaN(configuration.minInterval) || !configuration.minInterval || configuration.minInterval < 0) {
             configuration.minInterval = 0;
         }
 
-        if (typeof configuration.maxInterval !== "number" || isNaN(configuration.maxInterval) || !configuration.maxInterval || configuration.maxInterval < 0) {
+        if (isNaN(configuration.maxInterval) || !configuration.maxInterval || configuration.maxInterval < 0) {
             configuration.maxInterval = 0;
         }
 
@@ -190,7 +201,7 @@ export class RangeSliderConfigurationUtil {
         }
     }
 
-    private static updatePrettyValues(configuration: IRangeSliderConfiguration) {
+    private static updatePrettyValues(configuration: IRangeSliderConfiguration<number>) {
         if (configuration.values.length <= 0) {
             return;
         }
@@ -214,7 +225,7 @@ export class RangeSliderConfigurationUtil {
         });
     }
 
-    public static prettify(configuration: IRangeSliderConfiguration, value: number): string {
+    public static prettify(configuration: IRangeSliderConfiguration<number>, value: number): string {
         if (!configuration.prettifyEnabled) {
             return value.toString(10);
         }
@@ -226,7 +237,80 @@ export class RangeSliderConfigurationUtil {
         }
     }
 
-    private static defaultPrettify(configuration: IRangeSliderConfiguration, value: string): string {
+    private static defaultPrettify(configuration: IRangeSliderConfiguration<number>, value: string): string {
         return value.replace(/(\d{1,3}(?=(?:\d\d\d)+(?!\d)))/g, "$1" + configuration.prettifySeparator);
+    }
+
+    /**
+     * Convert percent to real values
+     */
+    public static convertToValue(min: number, max: number, step: number, percent: number): number {
+        let minLength: number, maxLength: number,
+            avgDecimals = 0,
+            abs = 0;
+
+        const minDecimals = min.toString().split(".")[1],
+            maxDecimals = max.toString().split(".")[1];
+
+        if (percent === 0) {
+            return min;
+        }
+        if (percent === 100) {
+            return max;
+        }
+
+
+        if (minDecimals) {
+            minLength = minDecimals.length;
+            avgDecimals = minLength;
+        }
+        if (maxDecimals) {
+            maxLength = maxDecimals.length;
+            avgDecimals = maxLength;
+        }
+        if (minLength && maxLength) {
+            avgDecimals = (minLength >= maxLength) ? minLength : maxLength;
+        }
+
+        if (min < 0) {
+            abs = Math.abs(min);
+            min = +(min + abs).toFixed(avgDecimals);
+            max = +(max + abs).toFixed(avgDecimals);
+        }
+
+        let number = ((max - min) / 100 * percent) + min,
+            result: number;
+        const string = step.toString().split(".")[1];
+
+        if (string) {
+            number = +number.toFixed(string.length);
+        } else {
+            number = number / step;
+            number = number * step;
+
+            number = +number.toFixed(0);
+        }
+
+        if (abs) {
+            number -= abs;
+        }
+
+        if (string) {
+            result = +number.toFixed(string.length);
+        } else {
+            result = RangeSliderConfigurationUtil.toFixed(number);
+        }
+
+        if (result < min) {
+            result = min;
+        } else if (result > max) {
+            result = max;
+        }
+
+        return result;
+    }
+
+    public static toFixed(num: number): number {
+        return parseFloat(num.toFixed(20));
     }
 }

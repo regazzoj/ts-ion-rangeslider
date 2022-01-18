@@ -1,26 +1,17 @@
 import {SkinType, SliderType} from "../enums";
-import {RangeSliderEvent} from "./range-slider-event";
+import {IRangeSliderEvent} from "./range-slider-event";
 
-export interface IRangeSliderConfiguration {
+export interface IBaseRangeSliderConfiguration {
     skin: SkinType; // Set slider theme [Default: flat]
     type: SliderType;    // Choose slider type, could be `single` - for one handle, or `double` for two handles [Default: single]
-    min: number;    // Set slider minimum value [Default: 10]
-    max: number;    // Set slider maximum value [Default: 100]
-    from?: number;    // Set start position for left handle (or for single handle) [Default: min]
-    to?: number;    // Set start position for right handle [Default: max]
-    step: number;    // Set sliders step. Always > 0. Could be fractional [Default: 1]
-    minInterval?: number;    // Set minimum diapason between sliders. Only for **double** type [Default: -]
-    maxInterval?: number;    // Set minimum maximum between sliders. Only for **double** type [Default: -]
+    minInterval: number;    // Set minimum diapason between sliders. Only for **double** type [Default: -]
+    maxInterval: number;    // Set minimum maximum between sliders. Only for **double** type [Default: -]
     dragInterval: boolean;   // Allow user to drag whole range. Only for **double** type [Default: false]
     values: (number | string)[];     // Set up your own array of possible slider values. They could be numbers or strings. If the values array is set up, min, max and step param, can no longer be changed [Default: []]
     prettyValues: (number | string)[];
     fromFixed: boolean;   // Fix position of left (or single) handle [Default: false]
-    fromMin?: number;    // Set minimum limit for left (or single) handle [Default: min]
-    fromMax?: number;    // Set maximum limit for left (or single) handle [Default: max]
     fromShadow: boolean;   // Highlight the limits for left handle [Default: false]
     toFixed: boolean;   // Fix position of right handle [Default: false]
-    toMin?: number;    // Set minimum limit for right handle [Default: min]
-    toMax?: number;    // Set maximum limit for right handle [Default: max]
     toShadow: boolean;   // Highlight the right handle [Default: false]
     prettifyEnabled: boolean;   // Improve readability of long numbers: 10000000 &rarr; 10 000 000 [Default: true]
     prettifySeparator: string;    // Set up your own separator for long numbers: 10000000 &rarr; 10,000,000 etc. [Default:  ]
@@ -29,7 +20,6 @@ export interface IRangeSliderConfiguration {
     keyboard: boolean;   // Activates keyboard controls. Move left: &larr;, &darr;, A, S. Move right: &rarr;, &uarr;, W, D. [Default: true]
     grid: boolean;   // Enables grid of values above the slider [Default: true]
     gridMargin: boolean;   // Set left and right grid gaps [Default: true]
-    gridNum: number;    // Number of grid units [Default: 4]
     gridSnap: boolean;   // Snap grid to sliders step (step param). If activated, grid_num will not be used. Max steps = 50 [Default: false]
     hideMinMax: boolean;   // Hides **min** and **max** labels [Default: false]
     hideFromTo: boolean;   // Hides **from** and **to** labels [Default: false]
@@ -43,8 +33,21 @@ export interface IRangeSliderConfiguration {
     block: boolean;   // Locks slider and makes it inactive. Input is NOT disabled. Can be send with forms [Default: false]
     extraClasses: string;    // Traverse extra CSS-classes to sliders container [Default: —]
     callbackScope?: object;       // Scope for callbacks. Pass any object [Default: null]
-    onStart?: (obj: RangeSliderEvent) => void; // Callback. Is called on slider start. Gets all slider data as a 1st attribute [Default: null]
-    onChange?: (obj: RangeSliderEvent) => void; // Callback. IS called on each values change. Gets all slider data as a 1st attribute [Default: null]
-    onFinish?: (obj: RangeSliderEvent) => void; // Callback. Is called when user releases handle. Gets all slider data as a 1st attribute [Default: null]
-    onUpdate?: (obj: RangeSliderEvent) => void; // Callback. Is called when slider is modified by external methods `update` or `reset [Default: null]
+    onStart?: (obj: IRangeSliderEvent) => void; // Callback. Is called on slider start. Gets all slider data as a 1st attribute [Default: null]
+    onChange?: (obj: IRangeSliderEvent) => void; // Callback. IS called on each values change. Gets all slider data as a 1st attribute [Default: null]
+    onFinish?: (obj: IRangeSliderEvent) => void; // Callback. Is called when user releases handle. Gets all slider data as a 1st attribute [Default: null]
+    onUpdate?: (obj: IRangeSliderEvent) => void; // Callback. Is called when slider is modified by external methods `update` or `reset [Default: null]
+}
+
+export interface IRangeSliderConfiguration<T> extends IBaseRangeSliderConfiguration {
+    min: T;    // Set slider minimum value [Default: 10]
+    max: T;    // Set slider maximum value [Default: 100]
+    from: T;       // Set start position for left handle (or for single handle) [Default: min]
+    to: T;         // Set start position for right handle [Default: max]
+    step: T;       // Set sliders step. Always > 0. Could be fractional [Default: 1]
+    fromMin: T;    // Set minimum limit for left (or single) handle [Default: min]
+    fromMax: T;    // Set maximum limit for left (or single) handle [Default: max]
+    toMin: T;      // Set minimum limit for right handle [Default: min]
+    toMax: T;      // Set maximum limit for right handle [Default: max]
+    gridNum: T;    // Number of grid units [Default: 4]
 }

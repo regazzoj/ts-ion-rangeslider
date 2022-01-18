@@ -1,12 +1,13 @@
-import * as RangeSlider from "../src/classes/range-slider";
+import {RangeSlider} from "../src/classes/range-slider";
 import {SkinType, SliderType} from "../src/enums";
+/* eslint no-console: 0 */
 
 test("RangeSlider", () => {
     const div = document.createElement("div");
     const input = document.createElement("input");
     div.append(input);
 
-    const sliderInputElement = new RangeSlider.Slider(input, {
+    const sliderInputElement = new RangeSlider(input, {
         skin: SkinType.round,
         grid: true,
         gridMargin: true,

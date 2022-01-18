@@ -1,2 +1,2 @@
 export {SliderType, SkinType} from "./enums"
-export {Slider as TsRangeSlider} from "./classes/range-slider";
+export {RangeSlider as TsRangeSlider} from "./classes/range-slider";
