@@ -1,4 +1,4 @@
-import { Slider } from '../src/range-slider';
+import { Slider } from "../src/classes/range-slider";
 
 test("RangeSlider is exported", () => {
   expect(Slider).toBeInstanceOf(Object);

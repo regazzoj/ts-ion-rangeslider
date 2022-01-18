@@ -1,3 +1,2 @@
-export { SliderType } from './range-slider-configuration';
-
-export * as RangeSlider  from './range-slider';
+export {SliderType, SkinType} from "./enums"
+export {Slider as TsRangeSlider} from "./classes/range-slider";

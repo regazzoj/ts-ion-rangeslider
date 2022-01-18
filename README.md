@@ -44,16 +44,18 @@ You also need to add following style sheet :
 * ionRangeSlider.css
 
 ```html
-<html>
-    <head>
-        ...
-        <script src="js/bundle.js"></script>
-        <link rel="stylesheet" type="text/css" href="style.css">
-        ...
-    </head>
-    <body>
+
+<html lang=fr>
+<head>
     ...
-    </body>
+    <title>Amazing Web Site</title>
+    <script src="js/bundle.js"></script>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    ...
+</head>
+<body>
+...
+</body>
 </html>
 ```
 
@@ -63,13 +65,13 @@ You also need to add following style sheet :
   * Installation command for `npm` =>
 
     ```bash
-    npm i ts-ion-rangeslider
+    npm i ts-rangeslider
     ```
 
   * Installation command for `yarn` =>
 
     ```bash
-    yarn add ts-ion-rangeslider
+    yarn add ts-rangeslider
     ```
 
 [//]: # (### NPM or YARN)
@@ -96,52 +98,52 @@ new TsIonRangeSlider.Slider(document.querySelector("#example_id"));
 ## Settings
 
 
-| Option                   | Data-Attr                     | Defaults    | Type     | Description                                                                                                                                                         |
-|--------------------------|-------------------------------|-------------|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `skin`                   | `data-skin`                   | `flat`      | string   | Choose UI skin to use (flat, big, modern, round, sharp, square)                                                                                                     |
-| `type`                   | `data-type`                   | `single`    | string   | Choose slider type, could be `single` - for one handle, or `double` for two handles                                                                                 |
-| `min`                    | `data-min`                    | `10`        | number   | Set slider minimum value                                                                                                                                            |
-| `max`                    | `data-max`                    | `100`       | number   | Set slider maximum value                                                                                                                                            |
-| `from`                   | `data-from`                   | `undefined` | number   | Set start position for left handle (or for single handle)                                                                                                           |
-| `to`                     | `data-to`                     | `undefined` | number   | Set start position for right handle                                                                                                                                 |
-| `step`                   | `data-step`                   | `1`         | number   | Set sliders step. Always > 0. Could be fractional                                                                                                                   |
-| `min_interval`           | `data-min-interval`           | `undefined` | number   | Set minimum diapason between sliders. Only for **double** type                                                                                                      |
-| `max_interval`           | `data-max-interval`           | `undefined` | number   | Set minimum maximum between sliders. Only for **double** type                                                                                                       |
-| `drag_interval`          | `data-drag-interval`          | `false`     | boolean  | Allow user to drag whole range. Only for **double** type                                                                                                            |
-| `values`                 | `data-values`                 | `[]`        | array    | Set up your own array of possible slider values. They could be numbers or strings. If the values array is set up, min, max and step param, can no longer be changed |
-| `from_fixed`             | `data-from-fixed`             | `false`     | boolean  | Fix position of left (or single) handle                                                                                                                             |
-| `from_min`               | `data-from-min`               | `undefined` | number   | Set minimum limit for left (or single) handle                                                                                                                       |
-| `from_max`               | `data-from-max`               | `undefined` | number   | Set maximum limit for left (or single) handle                                                                                                                       |
-| `from_shadow`            | `data-from-shadow`            | `false`     | boolean  | Highlight the limits for left handle                                                                                                                                |
-| `to_fixed`               | `data-to-fixed`               | `false`     | boolean  | Fix position of right handle                                                                                                                                        |
-| `to_min`                 | `data-to-min`                 | `undefined` | number   | Set minimum limit for right handle                                                                                                                                  |
-| `to_max`                 | `data-to-max`                 | `undefined` | number   | Set maximum limit for right handle                                                                                                                                  |
-| `to_shadow`              | `data-to-shadow`              | `false`     | boolean  | Highlight the right handle                                                                                                                                          |
-| `prettify_enabled`       | `data-prettify-enabled`       | `true`      | boolean  | Improve readability of long numbers: 10000000 &rarr; 10 000 000                                                                                                     |
-| `prettify_separator`     | `data-prettify-separator`     | ` `         | string   | Set up your own separator for long numbers: 10000000 &rarr; 10,000,000 etc.                                                                                         |
-| `prettify`               | `-`                           | `undefined` | function | Set up your own prettify function. Can be anything. For example, you can set up unix time as slider values and than transform them to cool looking dates            |
-| `force_edges`            | `data-force-edges`            | `false`     | boolean  | Sliders handles and tooltips will be always inside it's container                                                                                                   |
-| `keyboard`               | `data-keyboard`               | `true`      | boolean  | Activates keyboard controls. Move left: &larr;, &darr;, A, S. Move right: &rarr;, &uarr;, W, D.                                                                     |
-| `grid`                   | `data-grid`                   | `true`      | boolean  | Enables grid of values above the slider                                                                                                                             |
-| `grid_margin`            | `data-grid-margin`            | `true`      | boolean  | Set left and right grid gaps                                                                                                                                        |
-| `grid_num`               | `data-grid-num`               | `4`         | number   | Number of grid units                                                                                                                                                |
-| `grid_snap`              | `data-grid-snap`              | `false`     | boolean  | Snap grid to sliders step (step param). If activated, grid_num will not be used. Max steps = 50                                                                     |
-| `hide_min_max`           | `data-hide-min-max`           | `false`     | boolean  | Hides **min** and **max** labels                                                                                                                                    |
-| `hide_from_to`           | `data-hide-from-to`           | `false`     | boolean  | Hides **from** and **to** labels                                                                                                                                    |
-| `prefix`                 | `data-prefix`                 | `undefined` | string   | Set prefix for values. Will be set up right before the number: **$**100                                                                                             |
-| `postfix`                | `data-postfix`                | `undefined` | string   | Set postfix for values. Will be set up right after the number: 100**k**                                                                                             |
-| `max_postfix`            | `data-max-postfix`            | `undefined` | string   | Special postfix, used only for maximum value. Will be showed after handle will reach maximum right position. For example **0 — 100+**                               |
-| `decorate_both`          | `data-decorate-both`          | `true`      | boolean  | Used for **double** type and only if prefix or postfix was set up. Determine how to decorate close values. For example: **$10k — $100k** or **$10 — 100k**          |
-| `values_separator`       | `data-decorate-both`          | ` - `       | string   | Set your own separator for close values. Used for **double** type. Default: **10 — 100**. Or you may set: **10 to 100, 10 + 100, 10 &rarr; 100** etc.               |
-| `input_values_separator` | `data-input-values-separator` | ` ; `       | string   | Separator for **double** values in input value property. `<input value="25;42">`                                                                                    |
-| `disable`                | `data-disable`                | `false`     | boolean  | Locks slider and makes it inactive. Input is disabled too. Invisible to forms                                                                                       |
-| `block`                  | `data-blokc`                  | `false`     | boolean  | Locks slider and makes it inactive. Input is NOT disabled. Can be send with forms                                                                                   |
-| `extra_classes`          | `data-extra-classes`          | `undefined` | string   | Traverse extra CSS-classes to sliders container                                                                                                                     |
-| `scope`                  | `-`                           | `undefined` | object   | Scope for callbacks. Pass any object                                                                                                                                |
-| `onStart`                | `-`                           | `undefined` | function | Callback. Is called on slider start. Gets all slider data as a 1st attribute                                                                                        |
-| `onChange`               | `-`                           | `undefined` | function | Callback. IS called on each values change. Gets all slider data as a 1st attribute                                                                                  |
-| `onFinish`               | `-`                           | `undefined` | function | Callback. Is called when user releases handle. Gets all slider data as a 1st attribute                                                                              |
-| `onUpdate`               | `-`                           | `undefined` | function | Callback. Is called when slider is modified by external methods `update` or `reset`                                                                                 |
+| Option                 | Data-Attr                     | Defaults    | Type     | Description                                                                                                                                                         |
+|------------------------|-------------------------------|-------------|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `skin`                 | `data-skin`                   | `flat`      | string   | Choose UI skin to use (flat, big, modern, round, sharp, square)                                                                                                     |
+| `type`                 | `data-type`                   | `single`    | string   | Choose slider type, could be `single` - for one handle, or `double` for two handles                                                                                 |
+| `min`                  | `data-min`                    | `10`        | number   | Set slider minimum value                                                                                                                                            |
+| `max`                  | `data-max`                    | `100`       | number   | Set slider maximum value                                                                                                                                            |
+| `from`                 | `data-from`                   | `undefined` | number   | Set start position for left handle (or for single handle)                                                                                                           |
+| `to`                   | `data-to`                     | `undefined` | number   | Set start position for right handle                                                                                                                                 |
+| `step`                 | `data-step`                   | `1`         | number   | Set sliders step. Always > 0. Could be fractional                                                                                                                   |
+| `minInterval`          | `data-min-interval`           | `undefined` | number   | Set minimum diapason between sliders. Only for **double** type                                                                                                      |
+| `maxInterval`          | `data-max-interval`           | `undefined` | number   | Set minimum maximum between sliders. Only for **double** type                                                                                                       |
+| `dragInterval`         | `data-drag-interval`          | `false`     | boolean  | Allow user to drag whole range. Only for **double** type                                                                                                            |
+| `values`               | `data-values`                 | `[]`        | array    | Set up your own array of possible slider values. They could be numbers or strings. If the values array is set up, min, max and step param, can no longer be changed |
+| `fromFixed`            | `data-from-fixed`             | `false`     | boolean  | Fix position of left (or single) handle                                                                                                                             |
+| `fromMin`              | `data-from-min`               | `undefined` | number   | Set minimum limit for left (or single) handle                                                                                                                       |
+| `fromMax`              | `data-from-max`               | `undefined` | number   | Set maximum limit for left (or single) handle                                                                                                                       |
+| `fromShadow`           | `data-from-shadow`            | `false`     | boolean  | Highlight the limits for left handle                                                                                                                                |
+| `toFixed`              | `data-to-fixed`               | `false`     | boolean  | Fix position of right handle                                                                                                                                        |
+| `toMin`                | `data-to-min`                 | `undefined` | number   | Set minimum limit for right handle                                                                                                                                  |
+| `toMax`                | `data-to-max`                 | `undefined` | number   | Set maximum limit for right handle                                                                                                                                  |
+| `toShadow`             | `data-to-shadow`              | `false`     | boolean  | Highlight the right handle                                                                                                                                          |
+| `prettifyEnabled`      | `data-prettify-enabled`       | `true`      | boolean  | Improve readability of long numbers: 10000000 &rarr; 10 000 000                                                                                                     |
+| `prettifySeparator`    | `data-prettify-separator`     | ` `         | string   | Set up your own separator for long numbers: 10000000 &rarr; 10,000,000 etc.                                                                                         |
+| `prettify`             | `-`                           | `undefined` | function | Set up your own prettify function. Can be anything. For example, you can set up unix time as slider values and than transform them to cool looking dates            |
+| `forceEdges`           | `data-force-edges`            | `false`     | boolean  | Sliders handles and tooltips will be always inside it's container                                                                                                   |
+| `keyboard`             | `data-keyboard`               | `true`      | boolean  | Activates keyboard controls. Move left: &larr;, &darr;, A, S. Move right: &rarr;, &uarr;, W, D.                                                                     |
+| `grid`                 | `data-grid`                   | `true`      | boolean  | Enables grid of values above the slider                                                                                                                             |
+| `gridMargin`           | `data-grid-margin`            | `true`      | boolean  | Set left and right grid gaps                                                                                                                                        |
+| `gridNum`              | `data-grid-num`               | `4`         | number   | Number of grid units                                                                                                                                                |
+| `gridSnap`             | `data-grid-snap`              | `false`     | boolean  | Snap grid to sliders step (step param). If activated, gridNum will not be used. Max steps = 50                                                                      |
+| `hideMinMax`           | `data-hide-min-max`           | `false`     | boolean  | Hides **min** and **max** labels                                                                                                                                    |
+| `hideFromTo`           | `data-hide-from-to`           | `false`     | boolean  | Hides **from** and **to** labels                                                                                                                                    |
+| `prefix`               | `data-prefix`                 | `undefined` | string   | Set prefix for values. Will be set up right before the number: **$**100                                                                                             |
+| `postfix`              | `data-postfix`                | `undefined` | string   | Set postfix for values. Will be set up right after the number: 100**k**                                                                                             |
+| `maxPostfix`           | `data-max-postfix`            | `undefined` | string   | Special postfix, used only for maximum value. Will be showed after handle will reach maximum right position. For example **0 — 100+**                               |
+| `decorateBoth`         | `data-decorate-both`          | `true`      | boolean  | Used for **double** type and only if prefix or postfix was set up. Determine how to decorate close values. For example: **$10k — $100k** or **$10 — 100k**          |
+| `valuesSeparator`      | `data-decorate-both`          | ` - `       | string   | Set your own separator for close values. Used for **double** type. Default: **10 — 100**. Or you may set: **10 to 100, 10 + 100, 10 &rarr; 100** etc.               |
+| `inputValuesSeparator` | `data-input-values-separator` | ` ; `       | string   | Separator for **double** values in input value property. `<input value="25;42">`                                                                                    |
+| `disable`              | `data-disable`                | `false`     | boolean  | Locks slider and makes it inactive. Input is disabled too. Invisible to forms                                                                                       |
+| `block`                | `data-blokc`                  | `false`     | boolean  | Locks slider and makes it inactive. Input is NOT disabled. Can be send with forms                                                                                   |
+| `extraClasses`         | `data-extra-classes`          | `undefined` | string   | Traverse extra CSS-classes to sliders container                                                                                                                     |
+| `scope`                | `-`                           | `undefined` | object   | Scope for callbacks. Pass any object                                                                                                                                |
+| `onStart`              | `-`                           | `undefined` | function | Callback. Is called on slider start. Gets all slider data as a 1st attribute                                                                                        |
+| `onChange`             | `-`                           | `undefined` | function | Callback. IS called on each values change. Gets all slider data as a 1st attribute                                                                                  |
+| `onFinish`             | `-`                           | `undefined` | function | Callback. Is called when user releases handle. Gets all slider data as a 1st attribute                                                                              |
+| `onUpdate`             | `-`                           | `undefined` | function | Callback. Is called when slider is modified by external methods `update` or `reset`                                                                                 |
 
 
 
@@ -154,15 +156,15 @@ var callbackData = {
     "min": 1000,                // MIN value
     "max": 100000,              // MAX values
     "from": 10000,              // FROM value
-    "from_percent": 10,         // FROM value in percents
-    "from_value": 0,            // FROM value of array values (if used)
+    "fromPercent": 10,         // FROM value in percents
+    "fromValue": 0,            // FROM value of array values (if used)
     "to": 90000,                // TO value
-    "to_percent": 90,           // TO value in percents
-    "to_value": 0,              // TO value of array values (if used)
-    "min_pretty": "1 000",      // MIN prettified (if used)
-    "max_pretty": "100 000",    // MAX prettified (if used)
-    "from_pretty": "10 000",    // FROM prettified (if used)
-    "to_pretty": "90 000"       // TO prettified (if used)
+    "toPercent": 90,           // TO value in percents
+    "toValue": 0,              // TO value of array values (if used)
+    "minPretty": "1 000",      // MIN prettified (if used)
+    "maxPretty": "100 000",    // MAX prettified (if used)
+    "fromPretty": "10 000",    // FROM prettified (if used)
+    "toPretty": "90 000"       // TO prettified (if used)
 }
 ```
 
@@ -170,7 +172,7 @@ var callbackData = {
 An example of a customised slider:
 ```javascript
 const input = document.querySelector('#example');
-new TsIonRangeSlider.Slider(input, {
+new TsRangeSlider(input, {
     skin: "big",
     min: 0,
     max: 10000,
@@ -179,7 +181,7 @@ new TsIonRangeSlider.Slider(input, {
     type: 'double',
     prefix: "$",
     grid: true,
-    grid_num: 10
+    gridNum: 10
 });
 ```
 
@@ -204,18 +206,18 @@ const input = document.querySelector('#example');
 let sliderInputElement = new TsIonRangeSlider.Slider(input, {
     skin            : 'round',
     grid            : true,
-    grid_margin     : true,
-    grid_num        : 4,
-    grid_snap       : false,
-    hide_from_to    : false,
-    hide_min_max    : false,
+    gridMargin      : true,
+    gridNum         : 4,
+    gridSnap        : false,
+    hideFromTo      : false,
+    hideMinMax      : false,
     onChange        : obj => console.log(obj),
     onFinish        : obj => console.log(obj),
     onStart         : obj => console.log(obj),
     onUpdate        : obj => console.log(obj),
     type            : 'double',
     values          : ['a', 'b', 'c'],
-    values_separator: ','
+    valuesSeparator : ','
   });
   sliderInputElement.update({
     values: ['a', 'b', 'c', 'd'],
