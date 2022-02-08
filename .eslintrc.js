@@ -24,6 +24,6 @@ module.exports = {
         "@typescript-eslint/no-extra-non-null-assertion": "error",
         "@typescript-eslint/no-confusing-non-null-assertion": "error",
         "@typescript-eslint/prefer-nullish-coalescing": "error",
-        "@typescript-eslint/quotes": ["error"]
+        "@typescript-eslint/quotes": ["error", "double", {"allowTemplateLiterals": true}]
     }
 };

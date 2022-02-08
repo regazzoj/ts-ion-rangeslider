@@ -1,8 +1,8 @@
-import {IRangeSliderConfiguration} from "../interfaces/range-slider-configuration";
+import {IRangeSliderOptions} from "../interfaces/range-slider-options";
 import {SkinType, SliderType} from "../enums";
 
 export class RangeSliderConfigurationUtil {
-    private static defaultConfig: IRangeSliderConfiguration<number> = {
+    private static defaultConfig: IRangeSliderOptions<number> = {
         maxInterval: NaN,
         minInterval: NaN,
         from: NaN,
@@ -36,18 +36,17 @@ export class RangeSliderConfigurationUtil {
         toShadow: false,
         type: SliderType.single,
         values: [],
-        prettyValues: [],
         valuesSeparator: "-",
         dragInterval: false
     };
 
-    public static initializeConfiguration(configuration: Partial<IRangeSliderConfiguration<number | string>>, inputValues?: string): IRangeSliderConfiguration<number> {
+    public static initializeConfiguration(configuration: Partial<IRangeSliderOptions<number | string>>, inputValues?: string): IRangeSliderOptions<number> {
         const configurationOutput = RangeSliderConfigurationUtil.mergeConfigurations(RangeSliderConfigurationUtil.defaultConfig, configuration);
         if (inputValues !== undefined && inputValues !== "") {
             const givenValues = inputValues.split(configuration.inputValuesSeparator || ";");
 
-            if (givenValues.length < 2) {
-                throw Error("Input value needs two values with a separator between (';' by default)");
+            if (givenValues.length !== 2) {
+                throw Error(`Input value needs exactly 2 values (not ${givenValues.length} values) with a separator between (';' by default) `);
             }
             const values: (number | string)[] = [];
             if (givenValues[0]) {
@@ -69,12 +68,16 @@ export class RangeSliderConfigurationUtil {
         return configurationOutput;
     }
 
-    public static mergeConfigurations(baseConfiguration: IRangeSliderConfiguration<number | string>, newConfiguration?: Partial<IRangeSliderConfiguration<number | string>>, updateCheck?: { from: number; to: number }): IRangeSliderConfiguration<number> {
+    public static mergeConfigurations(baseConfiguration: IRangeSliderOptions<number | string>, newConfiguration?: Partial<IRangeSliderOptions<number | string>>, updateCheck?: { from: number; to: number }): IRangeSliderOptions<number> {
         const configurationOutput = RangeSliderConfigurationUtil.convertConfiguration({...baseConfiguration, ...newConfiguration});
         return RangeSliderConfigurationUtil.checkConfiguration(configurationOutput, updateCheck);
     }
 
-    public static convertConfiguration(configuration: IRangeSliderConfiguration<number|string>): IRangeSliderConfiguration<number> {
+    public static toFixed(number: number, decimals?: number): number {
+        return parseFloat(number.toFixed(decimals ?? 20));
+    }
+
+    private static convertConfiguration(configuration: IRangeSliderOptions<number | string>): IRangeSliderOptions<number> {
         if (typeof configuration.min === "string") configuration.min = parseFloat(configuration.min);
         if (typeof configuration.max === "string") configuration.max = parseFloat(configuration.max);
         if (typeof configuration.from === "string") configuration.from = parseFloat(configuration.from);
@@ -88,15 +91,13 @@ export class RangeSliderConfigurationUtil {
 
         if (typeof configuration.gridNum === "string") configuration.gridNum = parseFloat(configuration.gridNum);
 
-        return configuration as IRangeSliderConfiguration<number>;
+        return configuration as IRangeSliderOptions<number>;
     }
 
-    public static checkConfiguration(configuration: IRangeSliderConfiguration<number>, updateCheck?: { from: number; to: number }): IRangeSliderConfiguration<number> {
+    private static checkConfiguration(configuration: IRangeSliderOptions<number>, updateCheck?: { from: number; to: number }): IRangeSliderOptions<number> {
         if (configuration.max < configuration.min) {
             configuration.max = configuration.min;
         }
-
-        RangeSliderConfigurationUtil.updatePrettyValues(configuration);
 
         if (isNaN(configuration.from)) {
             configuration.from = configuration.min;
@@ -155,25 +156,6 @@ export class RangeSliderConfigurationUtil {
             configuration.to = configuration.toMax;
         }
 
-        // r = this.result
-        // if (r) {
-        //     if (r.min !== configuration.min) {
-        //         r.min = configuration.min;
-        //     }
-        //
-        //     if (r.max !== configuration.max) {
-        //         r.max = configuration.max;
-        //     }
-        //
-        //     if (r.from < r.min || r.from > r.max) {
-        //         r.from = configuration.from;
-        //     }
-        //
-        //     if (r.to < r.min || r.to > r.max) {
-        //         r.to = configuration.to;
-        //     }
-        // }
-
         if (isNaN(configuration.minInterval) || !configuration.minInterval || configuration.minInterval < 0) {
             configuration.minInterval = 0;
         }
@@ -199,118 +181,5 @@ export class RangeSliderConfigurationUtil {
         } else {
             return givenValues[0];
         }
-    }
-
-    private static updatePrettyValues(configuration: IRangeSliderConfiguration<number>) {
-        if (configuration.values.length <= 0) {
-            return;
-        }
-        configuration.prettyValues = [];
-        configuration.min = 0;
-        configuration.max = configuration.values.length - 1;
-        configuration.step = 1;
-        configuration.gridNum = configuration.max;
-        configuration.gridSnap = true;
-        configuration.values.forEach((currentValue, index) => {
-            let value: number | string = parseFloat(typeof currentValue === "string" ? currentValue : currentValue.toString(10));
-
-            if (!isNaN(value)) {
-                configuration.values[index] = value;
-                value = RangeSliderConfigurationUtil.prettify(configuration, value);
-            } else {
-                value = configuration.values[index];
-            }
-
-            configuration.prettyValues.push(value);
-        });
-    }
-
-    public static prettify(configuration: IRangeSliderConfiguration<number>, value: number): string {
-        if (!configuration.prettifyEnabled) {
-            return value.toString(10);
-        }
-
-        if (configuration.prettify && typeof configuration.prettify === "function") {
-            return configuration.prettify(value);
-        } else {
-            return RangeSliderConfigurationUtil.defaultPrettify(configuration, value.toString(10));
-        }
-    }
-
-    private static defaultPrettify(configuration: IRangeSliderConfiguration<number>, value: string): string {
-        return value.replace(/(\d{1,3}(?=(?:\d\d\d)+(?!\d)))/g, "$1" + configuration.prettifySeparator);
-    }
-
-    /**
-     * Convert percent to real values
-     */
-    public static convertToValue(min: number, max: number, step: number, percent: number): number {
-        let minLength: number, maxLength: number,
-            avgDecimals = 0,
-            abs = 0;
-
-        const minDecimals = min.toString().split(".")[1],
-            maxDecimals = max.toString().split(".")[1];
-
-        if (percent === 0) {
-            return min;
-        }
-        if (percent === 100) {
-            return max;
-        }
-
-
-        if (minDecimals) {
-            minLength = minDecimals.length;
-            avgDecimals = minLength;
-        }
-        if (maxDecimals) {
-            maxLength = maxDecimals.length;
-            avgDecimals = maxLength;
-        }
-        if (minLength && maxLength) {
-            avgDecimals = (minLength >= maxLength) ? minLength : maxLength;
-        }
-
-        if (min < 0) {
-            abs = Math.abs(min);
-            min = +(min + abs).toFixed(avgDecimals);
-            max = +(max + abs).toFixed(avgDecimals);
-        }
-
-        let number = ((max - min) / 100 * percent) + min,
-            result: number;
-        const string = step.toString().split(".")[1];
-
-        if (string) {
-            number = +number.toFixed(string.length);
-        } else {
-            number = number / step;
-            number = number * step;
-
-            number = +number.toFixed(0);
-        }
-
-        if (abs) {
-            number -= abs;
-        }
-
-        if (string) {
-            result = +number.toFixed(string.length);
-        } else {
-            result = RangeSliderConfigurationUtil.toFixed(number);
-        }
-
-        if (result < min) {
-            result = min;
-        } else if (result > max) {
-            result = max;
-        }
-
-        return result;
-    }
-
-    public static toFixed(num: number): number {
-        return parseFloat(num.toFixed(20));
     }
 }

@@ -1,3 +1,4 @@
+
 {
   "author": "Regazzoj",
   "bugs": {
@@ -38,7 +39,7 @@
   "style": "dist/styles/ionRangeSlider.css",
   "scripts": {
     "build": "yarn typegen && yarn rollup -c",
-    "ci": "yarn eslint & yarn build & yarn test & wait",
+    "ci": "yarn eslint && yarn build && yarn test && wait",
     "eslint": "eslint 'src/**/*.ts'",
     "prepublishOnly": "yarn ci",
     "test": "jest",

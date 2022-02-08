@@ -1,8 +1,7 @@
 import {IRangeSliderEvent} from "../interfaces/range-slider-event";
-import {IRangeSliderConfiguration} from "../interfaces/range-slider-configuration";
-import {IElementsCache} from "../interfaces/cache-range-slider";
+import {IRangeSliderOptions} from "../interfaces/range-slider-options";
 import {SliderType} from "../enums";
-import {RangeSliderConfigurationUtil} from "./range-slider-configuration-util";
+import {RangeSliderState} from "./range-slider-state";
 
 export class RangeSliderEvent implements IRangeSliderEvent {
     readonly from: number;
@@ -20,9 +19,9 @@ export class RangeSliderEvent implements IRangeSliderEvent {
     readonly toPretty: string;
     readonly toValue: number | string;
 
-    constructor(configuration: IRangeSliderConfiguration<number>,cache: IElementsCache, percents: { singleReal: number; fromReal:number; toReal: number}) {
-        this.slider = cache.slider;
-        this.input = cache.input;
+    constructor(configuration: IRangeSliderOptions<number>, state: RangeSliderState, input: HTMLInputElement, slider: Element, percents: { singleReal: number; fromReal:number; toReal: number}) {
+        this.slider = slider;
+        this.input = input;
         this.min = configuration.min;
         this.max = configuration.max;
 
@@ -32,24 +31,24 @@ export class RangeSliderEvent implements IRangeSliderEvent {
             this.fromPercent = percents.fromReal;
         }
 
-        this.from = RangeSliderConfigurationUtil.convertToValue(configuration.min, configuration.max, configuration.step,this.fromPercent);
-        this.fromPretty = RangeSliderConfigurationUtil.prettify(configuration, this.from);
+        this.from = state.convertToValue(this.fromPercent);
+        this.fromPretty = state.prettify(this.from);
 
-        if (configuration.values.length) {
-            this.fromValue = configuration.values[this.from];
+        if (state.hasCustomValues()) {
+            this.fromValue = state.getCustomValue(this.from);
         } else {
-            this.minPretty = RangeSliderConfigurationUtil.prettify(configuration,this.min);
-            this.maxPretty = RangeSliderConfigurationUtil.prettify(configuration,this.max);
+            this.minPretty = state.prettify(this.min);
+            this.maxPretty = state.prettify(this.max);
         }
 
         if (configuration.type === SliderType.double) {
             this.toPercent = percents.toReal;
-            this.to = RangeSliderConfigurationUtil.convertToValue(configuration.min, configuration.max, configuration.step,percents.toReal);
-            this.toPretty = RangeSliderConfigurationUtil.prettify(configuration,this.to);
+            this.to = state.convertToValue(percents.toReal);
+            this.toPretty = state.prettify(this.to);
 
-            if (configuration.values.length) {
-                this.fromValue = configuration.values[this.from];
-                this.toValue = configuration.values[this.to];
+            if (state.hasCustomValues()) {
+                this.fromValue = state.getCustomValue(this.from);
+                this.toValue = state.getCustomValue(this.to);
             }
         }
     }
