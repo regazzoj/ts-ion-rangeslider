@@ -1,11 +1,10 @@
 import {RangeSliderDOM, RangeSliderElement} from "./range-slider-dom";
-import {RangeSliderConfigurationUtil} from "./range-slider-configuration-util";
+import {RangeSliderUtil} from "./range-slider-util";
 import {IRangeSliderOptions} from "../interfaces/range-slider-options";
 import {RangeSliderEvent} from "./range-slider-event";
 import {CallbackType, EventType, SliderType} from "../enums";
 import {RangeSliderState} from "./range-slider-state";
 import {EventBus} from "./range-slider-event-bus";
-import {RangeSliderUtil} from "./range-slider-util";
 
 export interface IRangeSlider {
     destroy(): void;
@@ -86,7 +85,7 @@ export class RangeSlider implements IRangeSlider {
         }
 
         // merge configurations
-        this.configuration = RangeSliderConfigurationUtil.initializeConfiguration(options, inputElement.value);
+        this.configuration = RangeSliderUtil.initializeConfiguration(options, inputElement.value);
 
         this.state = new RangeSliderState(this.configuration);
 
@@ -959,7 +958,7 @@ export class RangeSlider implements IRangeSlider {
         }
         const updateCheck = {from: this.configuration.from, to: this.configuration.to};
 
-        this.configuration = RangeSliderConfigurationUtil.mergeConfigurations(this.configuration, options, updateCheck);
+        this.configuration = RangeSliderUtil.mergeConfigurations(this.configuration, options, updateCheck);
         this.state = new RangeSliderState(this.configuration);
 
         this.toggleInput();
