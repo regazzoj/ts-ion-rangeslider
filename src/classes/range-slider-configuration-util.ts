@@ -73,10 +73,6 @@ export class RangeSliderConfigurationUtil {
         return RangeSliderConfigurationUtil.checkConfiguration(configurationOutput, updateCheck);
     }
 
-    public static toFixed(number: number, decimals?: number): number {
-        return parseFloat(number.toFixed(decimals ?? 20));
-    }
-
     private static convertConfiguration(configuration: IRangeSliderOptions<number | string>): IRangeSliderOptions<number> {
         if (typeof configuration.min === "string") configuration.min = parseFloat(configuration.min);
         if (typeof configuration.max === "string") configuration.max = parseFloat(configuration.max);
@@ -97,6 +93,13 @@ export class RangeSliderConfigurationUtil {
     private static checkConfiguration(configuration: IRangeSliderOptions<number>, updateCheck?: { from: number; to: number }): IRangeSliderOptions<number> {
         if (configuration.max < configuration.min) {
             configuration.max = configuration.min;
+        }
+
+        if (configuration.values && configuration.values.length) {
+            configuration.min = 0;
+            configuration.max = configuration.values.length - 1;
+            configuration.step = 1;
+            configuration.gridSnap = true;
         }
 
         if (isNaN(configuration.from)) {

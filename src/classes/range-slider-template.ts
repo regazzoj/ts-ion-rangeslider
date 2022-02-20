@@ -1,6 +1,6 @@
 import {SkinType} from "../enums";
 
-export class Template {
+export class RangeSliderTemplate {
     static readonly containerHtml = (skin: SkinType, count: number, extraClasses: string): string => `<span class="irs irs--${skin} js-irs-${count}${extraClasses.length>0?` ${extraClasses}`:""}"></span>`;
 
     static readonly baseHtml =

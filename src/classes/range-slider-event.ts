@@ -1,5 +1,4 @@
 import {IRangeSliderEvent} from "../interfaces/range-slider-event";
-import {IRangeSliderOptions} from "../interfaces/range-slider-options";
 import {SliderType} from "../enums";
 import {RangeSliderState} from "./range-slider-state";
 
@@ -19,13 +18,13 @@ export class RangeSliderEvent implements IRangeSliderEvent {
     readonly toPretty: string;
     readonly toValue: number | string;
 
-    constructor(configuration: IRangeSliderOptions<number>, state: RangeSliderState, input: HTMLInputElement, slider: Element, percents: { singleReal: number; fromReal:number; toReal: number}) {
+    constructor(type: SliderType, state: RangeSliderState, input: HTMLInputElement, slider: Element, percents: { singleReal: number; fromReal:number; toReal: number}) {
         this.slider = slider;
         this.input = input;
-        this.min = configuration.min;
-        this.max = configuration.max;
+        this.min = state.min;
+        this.max = state.max;
 
-        if(configuration.type === SliderType.single) {
+        if(type === SliderType.single) {
             this.fromPercent = percents.singleReal;
         } else {
             this.fromPercent = percents.fromReal;
@@ -41,7 +40,7 @@ export class RangeSliderEvent implements IRangeSliderEvent {
             this.maxPretty = state.prettify(this.max);
         }
 
-        if (configuration.type === SliderType.double) {
+        if (type === SliderType.double) {
             this.toPercent = percents.toReal;
             this.to = state.convertToValue(percents.toReal);
             this.toPretty = state.prettify(this.to);

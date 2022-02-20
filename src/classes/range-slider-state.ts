@@ -1,16 +1,16 @@
 import {IRangeSliderOptions} from "../interfaces/range-slider-options";
-import {RangeSliderConfigurationUtil} from "./range-slider-configuration-util";
 import {SliderType} from "../enums";
+import {RangeSliderUtil} from "./range-slider-util";
 
 export class RangeSliderState {
-    private readonly customValues: (number | string)[] = []; //old prettyValues
-    private readonly prettifiedValues: (number | string)[] = []; //old prettyValues
+    private readonly customValues: (number | string)[] = [];
+    private readonly prettifiedValues: (number | string)[] = [];
     private readonly isPrettifyEnabled: boolean;
     private readonly prettifySeparator: string;
     private readonly _prettify: (value: number) => string;
-    private readonly min: number;
-    private readonly max: number;
-    private readonly step: number;
+    private readonly _min: number;
+    private readonly _max: number;
+    private readonly _step: number;
     private readonly isSnapEnabled: boolean;
     private readonly labelsCount: number;
     private readonly prefix: string;
@@ -41,16 +41,13 @@ export class RangeSliderState {
             this.labelsCount = configuration.gridNum;
         }
 
+        this._min = configuration.min;
+        this._max = configuration.max;
+        this._step = configuration.step;
         if (configuration.values.length > 0) {
-            this.min = 0;
-            this.max = configuration.values.length - 1;
-            this.step = 1
             this.isSnapEnabled = true;
             this.prettifyValues(configuration.values);
         } else {
-            this.min = configuration.min;
-            this.max = configuration.max;
-            this.step = configuration.step;
             this.isSnapEnabled = configuration.gridSnap;
         }
 
@@ -58,77 +55,46 @@ export class RangeSliderState {
         this.valuesSeparator = configuration.valuesSeparator;
     }
 
+    public get min() {
+        return this._min;
+    }
+
+    public get max() {
+        return this._max;
+    }
+
+    public get step() {
+        return this._step;
+    }
+
     public prettify(value: number): string {
         return this._prettify(value);
     }
 
     public convertToValue(percent: number): number {
-        let minLength: number, maxLength: number,
-            avgDecimals = 0,
-            abs = 0,
-            min = this.min,
-            max = this.max;
-        const step = this.step;
-
-        const minDecimals = min.toString().split(".")[1],
-            maxDecimals = max.toString().split(".")[1];
-
         if (percent === 0) {
-            return min;
+            return this.min;
         }
         if (percent === 100) {
-            return max;
+            return this.max;
         }
 
+        const decimals = RangeSliderState.getDecimals(this.step);
+        return parseFloat(((((this.max - this.min) / 100) * percent) + this.min).toFixed(decimals));
+    }
 
-        if (minDecimals) {
-            minLength = minDecimals.length;
-            avgDecimals = minLength;
-        }
-        if (maxDecimals) {
-            maxLength = maxDecimals.length;
-            avgDecimals = maxLength;
-        }
-        if (minLength && maxLength) {
-            avgDecimals = (minLength >= maxLength) ? minLength : maxLength;
+    public convertToPercent(value: number, noMin = false): number {
+        const diapason = this.max - this.min;
+
+        if (!diapason) {
+            throw Error("Min and max can't be equal")
         }
 
-        if (min < 0) {
-            abs = Math.abs(min);
-            min = RangeSliderConfigurationUtil.toFixed(min + abs, avgDecimals);
-            max = RangeSliderConfigurationUtil.toFixed(max + abs, avgDecimals);
-        }
+        return RangeSliderUtil.toFixed((noMin ? value : value - this.min) / (diapason / 100));
+    }
 
-        let number = ((max - min) / 100 * percent) + min,
-            result: number;
-        const string = step.toString().split(".")[1];
-
-        if (string) {
-            number = +number.toFixed(string.length);
-        } else {
-            number = number / step;
-            number = number * step;
-
-            number = +number.toFixed(0);
-        }
-
-        if (abs) {
-            number -= abs;
-        }
-
-        if (string) {
-            result = +number.toFixed(string.length);
-        } else {
-            result = RangeSliderConfigurationUtil.toFixed(number);
-        }
-
-        if (result < this.min) {
-            result = min;
-        } else if (result > this.max) {
-            result = max;
-        }
-
-        return result;
+    private static getDecimals(value: number): number {
+        return (value % 1 === 0 ? "" : value.toString(10).split(".")[1]).length;
     }
 
     public hasCustomValues(): boolean {
@@ -146,16 +112,19 @@ export class RangeSliderState {
     }
 
     public getGridLabelsCount(): number {
-        const gridLabelsCount = !this.isSnapEnabled ? this.labelsCount + 1 : //4 by default + 1 for the max
-            (this.max - this.min) / this.step;
+        const gridLabelsCount = !this.isSnapEnabled ? this.labelsCount + 1 : (this.max - this._min) / this.step;
         if (gridLabelsCount > 50) {
             return 51
         }
         return gridLabelsCount + 1;
     }
 
+    public getStepAsPercent() {
+        return (this.step * 100) / (this.max - this.min);
+    }
+
     public decorateMinValue(): string {
-        return this.decorate(this.min);
+        return this.decorate(this._min);
     }
 
     public decorateMaxValue(): string {
@@ -163,24 +132,22 @@ export class RangeSliderState {
     }
 
     public decorateForCollapsedValues(from: number, to: number): string {
-        if(this.doubleLabelsDecorated) {
+        if (this.doubleLabelsDecorated) {
             return `${this.decorate(from)}${this.valuesSeparator}${this.decorate(to)}`;
         }
 
         let fromCustom: number | string = from, toCustom: number | string = to;
-        if(this.hasCustomValues()) {
+        if (this.hasCustomValues()) {
             fromCustom = this.getValuePrettified(from);
             toCustom = this.getValuePrettified(to);
         }
-        if(to === this.max) {
+        if (to === this.max) {
             return this._decorateStringWithMaxPostfix(`${fromCustom}${this.valuesSeparator}${toCustom}`)
         }
         return this._decorateString(`${fromCustom}${this.valuesSeparator}${toCustom}`)
     }
 
     public decorate(value: number): string {
-        // eslint-disable-next-line no-console
-        console.log(!!this.maxPostfix);
         if (this.hasCustomValues()) {
             return this._decorateCustomValue(this.getValuePrettified(value));
         }
@@ -218,8 +185,6 @@ export class RangeSliderState {
             throw Error("Index can not be negative value");
         }
         if (index > this.customValues.length - 1) {
-            // eslint-disable-next-line no-console
-            console.log(index, this.customValues.length);
             throw Error("Index is bigger than the array length");
         }
     }

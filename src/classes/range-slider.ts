@@ -2,8 +2,10 @@ import {RangeSliderDOM, RangeSliderElement} from "./range-slider-dom";
 import {RangeSliderConfigurationUtil} from "./range-slider-configuration-util";
 import {IRangeSliderOptions} from "../interfaces/range-slider-options";
 import {RangeSliderEvent} from "./range-slider-event";
-import {SliderType} from "../enums";
+import {CallbackType, EventType, SliderType} from "../enums";
 import {RangeSliderState} from "./range-slider-state";
+import {EventBus} from "./range-slider-event-bus";
+import {RangeSliderUtil} from "./range-slider-util";
 
 export interface IRangeSlider {
     destroy(): void;
@@ -16,7 +18,10 @@ export interface IRangeSlider {
 export class RangeSlider implements IRangeSlider {
     private static currentPluginCount = 0;
 
-    private readonly domElement: RangeSliderDOM;
+    private configuration: IRangeSliderOptions<number>;
+    private state: RangeSliderState;
+    private domElement: RangeSliderDOM;
+    private eventBus = new EventBus();
     private readonly pluginCount: number;
 
     private input?: HTMLInputElement;
@@ -27,9 +32,9 @@ export class RangeSlider implements IRangeSlider {
     private previousResultTo = 0;
     private previousMinInterval?: number;
     private rafId?: number;
+    //TODO check si on peut supprimer
     private dragging = false;
     private forceRedraw = false;
-    private noDiapason = false;
     private hasTabIndex = true;
     private isKey = false;
     private isUpdate = false;
@@ -38,62 +43,17 @@ export class RangeSlider implements IRangeSlider {
     private isActive = false;
     private isResize = false;
     private isClick = false;
-    private configuration: IRangeSliderOptions<number>;
-    private state: RangeSliderState;
-    private labels = {
-        width: {
-            min: 0,
-            max: 0,
-            from: 0,
-            to: 0,
-            single: 0
-        },
-        percents: {
-            min: 0,
-            max: 0,
-            fromFake: 0,
-            fromLeft: 0,
-            toFake: 0,
-            toLeft: 0,
-            singleFake: 0,
-            singleLeft: 0
-        }
-    };
-    private coords = {
-        x: {
-            gap: 0,
-            pointer: 0
-        },
-        width: {
-            rs: 0,
-            oldRs: 0,
-            handle: 0
-        },
-        percents: {
-            gap: 0,
-            gapLeft: 0,
-            gapRight: 0,
-            step: 0,
-            pointer: 0,
-            handle: 0,
-            singleFake: 0,
-            singleReal: 0,
-            fromFake: 0,
-            fromReal: 0,
-            toFake: 0,
-            toReal: 0,
-            barX: 0,
-            barW: 0
-        },
-        big: [],
-        bigNum: 0,
-        bigP: [] as number[],
-        bigX: [] as number[],
-        bigW: [] as number[],
-        gridGap: 0
-    };
-    private updateCheck?: { from: number; to: number };
+
+    private currentPosition: number; // coords.x.pointer
+    private previousRangeSliderWidth: number; // coords.width.oldRs
+    private gapBetweenPointerAndHandle: number; // coords.percents.gap
+    private singleHandleAsPercent: number; //singleReal
+    private fromHandleAsPercent: number; //fromReal
+    private toHandleAsPercent: number; //toReal
+
     private target?: string;
+
+    private _pointerFocus = () => this.pointerFocus();
 
     private static getCurrentPluginCount() {
         return RangeSlider.currentPluginCount++;
@@ -104,6 +64,12 @@ export class RangeSlider implements IRangeSlider {
     // =================================================================================================================
 
     constructor(inputElement: HTMLInputElement, options: Partial<IRangeSliderOptions<number | string>>) {
+        this.eventBus.on(EventType.move, ((event: CustomEvent<{ x: number }>) => this.pointerMove(event.detail.x)));
+        this.eventBus.on(EventType.down, ((event: CustomEvent<{ target?: string; x: number }>) => this.pointerDown(event.detail.target, event.detail.x)));
+        this.eventBus.on(EventType.up, ((event: CustomEvent<{ eventTarget: EventTarget }>) => this.pointerUp(event.detail.eventTarget)));
+        this.eventBus.on(EventType.click, ((event: CustomEvent<{ target: string; x: number }>) => this.updateXPosition(event.detail.target, event.detail.x)));
+        this.eventBus.on(EventType.keyDown, ((event: CustomEvent<{ keyCode: string }>) => this.moveByKey(event.detail.keyCode)))
+
         if (!inputElement) {
             throw Error("Given input element does not exist");
         }
@@ -111,6 +77,8 @@ export class RangeSlider implements IRangeSlider {
         this.pluginCount = RangeSlider.getCurrentPluginCount();
 
         options = options || {};
+
+        //Todo récupérer les data de l'input pour initialiser la config'
 
         // check if base element is input
         if (inputElement.nodeName !== "INPUT") {
@@ -122,16 +90,16 @@ export class RangeSlider implements IRangeSlider {
 
         this.state = new RangeSliderState(this.configuration);
 
-        this.domElement = new RangeSliderDOM(inputElement, this.configuration, this.pluginCount, this.state);
+        this.domElement = new RangeSliderDOM(inputElement, this.configuration, this.pluginCount, this.state, this.eventBus);
 
-        this.domElement.addEventListener(this.configuration.type, this.configuration.dragInterval, this.configuration.keyboard,
-            (target, event) => this.pointerClick(target, event), (target, event) => this.pointerDown(target, event), () => this.pointerFocus(),
-            event => this.pointerMove(event), event => this.pointerUp(event), event => this.key(event));
+        this.domElement.addEventListener(this.configuration.type, this.configuration.dragInterval, this.configuration.keyboard, this._pointerFocus);
 
-        //todo create coords according to configuration (toReal must be set to "to" value, from as well)
-
-        // validate config, to be sure that all data types are correct
-        this.updateCheck = undefined;
+        if (this.configuration.type === SliderType.single) {
+            this.singleHandleAsPercent = this.state.convertToPercent(this.configuration.from);
+        } else {
+            this.fromHandleAsPercent = this.state.convertToPercent(this.configuration.from);
+            this.toHandleAsPercent = this.state.convertToPercent(this.configuration.to);
+        }
 
         this.init();
     }
@@ -140,22 +108,19 @@ export class RangeSlider implements IRangeSlider {
      * Starts or updates the plugin instance
      */
     private init(isUpdate?: boolean): void {
-        this.noDiapason = false;
-        this.coords.percents.step = this.convertToPercent(this.configuration.step, true);
         this.target = "base";
-
+        // eslint-disable-next-line no-console
+        console.log("target", this.target);
         this.toggleInput();
-        // this.append();
-        // this.setMinMax();
 
         if (isUpdate) {
             this.forceRedraw = true;
             this.calc(true);
-            this.callOnUpdate();
+            this.callOn(CallbackType.onUpdate);
         } else {
             this.forceRedraw = true;
             this.calc(true);
-            this.callOnStart();
+            this.callOn(CallbackType.onStart);
         }
 
         this.updateScene();
@@ -168,24 +133,22 @@ export class RangeSlider implements IRangeSlider {
     private changeLevel(target: string): void {
         switch (target) {
             case "single":
-                this.coords.percents.gap = RangeSliderConfigurationUtil.toFixed(this.coords.percents.pointer - this.coords.percents.singleFake);
-                this.domElement.getElement(RangeSliderElement.singleHandle).classList.add("state_hover");
+                this.gapBetweenPointerAndHandle = RangeSliderUtil.toFixed(this.getPointerAsPercent() - this.convertToFakePercent(this.singleHandleAsPercent));
+                this.domElement.getElement(RangeSliderElement.spanSingle).classList.add("state_hover");
                 break;
             case "from":
-                this.coords.percents.gap = RangeSliderConfigurationUtil.toFixed(this.coords.percents.pointer - this.coords.percents.fromFake);
+                this.gapBetweenPointerAndHandle = RangeSliderUtil.toFixed(this.getPointerAsPercent() - this.convertToFakePercent(this.fromHandleAsPercent));
                 this.domElement.getElement(RangeSliderElement.spanFrom).classList.add("state_hover");
                 this.domElement.getElement(RangeSliderElement.spanFrom).classList.add("type_last");
                 this.domElement.getElement(RangeSliderElement.spanTo).classList.remove("type_last");
                 break;
             case "to":
-                this.coords.percents.gap = RangeSliderConfigurationUtil.toFixed(this.coords.percents.pointer - this.coords.percents.toFake);
+                this.gapBetweenPointerAndHandle = RangeSliderUtil.toFixed(this.getPointerAsPercent() - this.convertToFakePercent(this.toHandleAsPercent));
                 this.domElement.getElement(RangeSliderElement.spanTo).classList.add("state_hover");
                 this.domElement.getElement(RangeSliderElement.spanTo).classList.add("type_last");
                 this.domElement.getElement(RangeSliderElement.spanFrom).classList.remove("type_last");
                 break;
             case "both":
-                this.coords.percents.gapLeft = RangeSliderConfigurationUtil.toFixed(this.coords.percents.pointer - this.coords.percents.fromFake);
-                this.coords.percents.gapRight = RangeSliderConfigurationUtil.toFixed(this.coords.percents.toFake - this.coords.percents.pointer);
                 this.domElement.getElement(RangeSliderElement.spanTo).classList.remove("type_last");
                 this.domElement.getElement(RangeSliderElement.spanFrom).classList.remove("type_last");
                 break;
@@ -200,13 +163,7 @@ export class RangeSlider implements IRangeSlider {
         this.domElement.remove();
 
         this.domElement.removeEventListener(this.configuration.type, this.configuration.dragInterval, this.configuration.keyboard,
-            (target, event) => this.pointerClick(target, event), (target, event) => this.pointerDown(target, event), () => this.pointerFocus(),
-            event => this.pointerMove(event), event => this.pointerUp(event), event => this.key(event));
-
-        this.coords.big = [];
-        this.coords.bigW = [];
-        this.coords.bigP = [];
-        this.coords.bigX = [];
+            () => this.pointerFocus());
 
         if (this.rafId) {
             cancelAnimationFrame(this.rafId);
@@ -219,44 +176,27 @@ export class RangeSlider implements IRangeSlider {
      */
     private pointerFocus(): void {
         if (!this.target) {
-            let handle: HTMLSpanElement;
+            const handle = this.configuration.type === SliderType.single ?
+                this.domElement.getElement(RangeSliderElement.spanSingle) :
+                this.domElement.getElement(RangeSliderElement.from);
 
-            if (this.configuration.type === "single") {
-                handle = this.domElement.getElement(RangeSliderElement.spanSingle);
-            } else {
-                handle = this.domElement.getElement(RangeSliderElement.from);
-            }
-
-            if (!handle) {
-                throw Error("Handle is not defined");
-            }
-            let x = RangeSlider.getOffset(handle).left;
+            let x = RangeSlider.getLeftOffset(handle);
             x += handle.offsetWidth / 2 - 1;
 
             this.updateXPosition("single", x);
         }
     }
 
-    private static getOffset(element: Element): { top: number; left: number } {
-        const rect = element.getBoundingClientRect();
-
-        return {
-            top: rect.top + window.scrollY,
-            left: rect.left + window.scrollX
-        };
+    private static getLeftOffset(element: Element): number {
+        return element.getBoundingClientRect().left + window.scrollX;
     }
 
     /**
      * Mousemove or touchmove
      * only for handlers
      */
-    private pointerMove(e: MouseEvent | TouchEvent) {
-        if (!this.dragging) {
-            return;
-        }
-
-        const x = RangeSlider.getX(e);
-        this.coords.x.pointer = x - this.coords.x.gap;
+    private pointerMove(xPointer: number) {
+        this.currentPosition = xPointer - RangeSlider.getLeftOffset(this.domElement.getElement(RangeSliderElement.rangeSlider));
 
         this.calc();
     }
@@ -265,11 +205,7 @@ export class RangeSlider implements IRangeSlider {
      * Mouseup or touchend
      * only for handlers
      */
-    private pointerUp(e: MouseEvent | TouchEvent): void {
-        if (this.currentPlugin !== this.pluginCount) {
-            return;
-        }
-
+    private pointerUp(eventTarget: EventTarget): void {
         if (this.isActive) {
             this.isActive = false;
         } else {
@@ -284,24 +220,16 @@ export class RangeSlider implements IRangeSlider {
         this.restoreOriginalMinInterval();
 
         // callbacks call
-        if (this.domElement.contains(e.target as Element) || this.dragging) {
-            this.callOnFinish();
+        if (this.domElement.contains(eventTarget as Element)) {
+            this.callOn(CallbackType.onFinish);
         }
-
-        this.dragging = false;
     }
 
     /**
      * Mousedown or touchstart
      * only for handlers
      */
-    private pointerDown(target: string | null, e: MouseEvent | TouchEvent): void {
-        e.preventDefault();
-        const x = RangeSlider.getX(e);
-        if (e instanceof MouseEvent && e.button === 2) {
-            return;
-        }
-
+    private pointerDown(target: string | null, x: number): void {
         if (target === "both") {
             this.setTempMinInterval();
         }
@@ -316,8 +244,8 @@ export class RangeSlider implements IRangeSlider {
         this.isActive = true;
         this.dragging = true;
 
-        this.coords.x.gap = RangeSlider.getOffset(this.domElement.getElement(RangeSliderElement.rangeSlider)).left;
-        this.coords.x.pointer = x - this.coords.x.gap;
+        const gap = RangeSlider.getLeftOffset(this.domElement.getElement(RangeSliderElement.rangeSlider));
+        this.currentPosition = x - gap;
 
         this.calcPointerPercent();
         this.changeLevel(target);
@@ -327,34 +255,17 @@ export class RangeSlider implements IRangeSlider {
         this.updateScene();
     }
 
-    private static getX(e: MouseEvent | TouchEvent) {
-        return e instanceof MouseEvent ? e.pageX : e.touches && e.touches[0].pageX;
-    }
-
-    /**
-     * Mousedown or touchstart
-     * for other slider elements, like diapason line
-     */
-    private pointerClick(target: string, e: MouseEvent | TouchEvent): void {
-        this.domElement.getElement(RangeSliderElement.line).focus();
-        e.preventDefault();
-        const x = e instanceof MouseEvent ? e.pageX : e.touches && e.touches[0].pageX;
-        if (e instanceof MouseEvent && e.button === 2) {
-            return;
-        }
-
-        this.updateXPosition(target, x);
-    }
-
     private updateXPosition(target: string, x: number) {
         this.currentPlugin = this.pluginCount;
         this.target = target;
 
         this.isClick = true;
-        this.coords.x.gap = RangeSlider.getOffset(this.domElement.getElement(RangeSliderElement.rangeSlider)).left;
-        this.coords.x.pointer = RangeSliderConfigurationUtil.toFixed(x - this.coords.x.gap, 0);
+        const gap = RangeSlider.getLeftOffset(this.domElement.getElement(RangeSliderElement.rangeSlider));
+
+        this.currentPosition = RangeSliderUtil.toFixed(x - gap, 0);
 
         this.forceRedraw = true;
+
         this.calc();
 
         RangeSlider.trigger("focus", this.domElement.getElement(RangeSliderElement.line));
@@ -366,58 +277,29 @@ export class RangeSlider implements IRangeSlider {
     }
 
     /**
-     * Keyboard controls for focused slider
+     * Move by key
      */
-    private key(e: KeyboardEvent) {
-        if (this.currentPlugin !== this.pluginCount || e.altKey || e.ctrlKey || e.shiftKey || e.metaKey) {
-            return;
-        }
-
-        switch (e.code) {
+    private moveByKey(keyCode: string): void {
+        let p = this.getPointerAsPercent();
+        const stepAsPercent = this.state.getStepAsPercent();
+        switch (keyCode) {
             case "KeyW": // W
             case "KeyA": // A
             case "ArrowDown": // DOWN
             case "ArrowLeft": // LEFT
-                e.preventDefault();
-                this.moveByKey(false);
+                p -= stepAsPercent;
                 break;
-
             case "KeyS": // S
             case "KeyD": // D
             case "ArrowUp": // UP
             case "ArrowRight": // RIGHT
-                e.preventDefault();
-                this.moveByKey(true);
+                p += stepAsPercent;
                 break;
         }
-    }
 
-    /**
-     * Move by key
-     */
-    private moveByKey(right: boolean): void {
-        let p = this.coords.percents.pointer;
-        let percentsStep = (this.configuration.max - this.configuration.min) / 100;
-        percentsStep = this.configuration.step / percentsStep;
-
-        if (right) {
-            p += percentsStep;
-        } else {
-            p -= percentsStep;
-        }
-
-        this.coords.x.pointer = RangeSliderConfigurationUtil.toFixed(this.coords.width.rs / 100 * p);
+        this.currentPosition = this.domElement.getElement(RangeSliderElement.rangeSlider).offsetWidth / 100 * p;
         this.isKey = true;
         this.calc();
-    }
-
-    private static outerWidth(el: HTMLElement, includeMargin = false): number {
-        let width = el.offsetWidth;
-        if (includeMargin) {
-            const style = getComputedStyle(el);
-            width += parseInt(style.marginLeft, 10) + parseInt(style.marginRight, 10);
-        }
-        return width;
     }
 
     /**
@@ -458,14 +340,12 @@ export class RangeSlider implements IRangeSlider {
 
         this.calcCount++;
 
+        const rangeSliderWidth = this.domElement.getElement(RangeSliderElement.rangeSlider).offsetWidth;
         if (this.calcCount === 10 || update) {
             this.calcCount = 0;
-            this.coords.width.rs = RangeSlider.outerWidth(this.domElement.getElement(RangeSliderElement.rangeSlider), false);
-
-            this.calcHandlePercent();
         }
 
-        if (!this.coords.width.rs) {
+        if (!rangeSliderWidth) {
             return;
         }
 
@@ -473,12 +353,14 @@ export class RangeSlider implements IRangeSlider {
         let handleX = this.getHandleX();
 
         if (this.target === "both") {
-            this.coords.percents.gap = 0;
+            this.gapBetweenPointerAndHandle = 0;
             handleX = this.getHandleX();
         }
 
+        const handleWidthAsPercent = this.domElement.getHandleWidthAsPercent();
+
         if (this.target === "click") {
-            this.coords.percents.gap = this.coords.percents.handle / 2;
+            this.gapBetweenPointerAndHandle = (handleWidthAsPercent / 2);
             handleX = this.getHandleX();
 
             if (this.configuration.dragInterval) {
@@ -497,12 +379,7 @@ export class RangeSlider implements IRangeSlider {
                     break;
                 }
 
-                this.coords.percents.singleReal = this.convertToRealPercent(handleX);
-                this.coords.percents.singleReal = this.calcWithStep(this.coords.percents.singleReal);
-                this.coords.percents.singleReal = this.checkDiapason(this.coords.percents.singleReal, this.configuration.fromMin, this.configuration.fromMax);
-
-                this.coords.percents.singleFake = this.convertToFakePercent(this.coords.percents.singleReal);
-
+                this.singleHandleAsPercent = this.checkDiapason(this.calcWithStep(this.convertToRealPercent(handleX)), this.configuration.fromMin, this.configuration.fromMax);
                 break;
 
             case "from":
@@ -510,17 +387,13 @@ export class RangeSlider implements IRangeSlider {
                     break;
                 }
 
-                this.coords.percents.fromReal = this.convertToRealPercent(handleX);
-                this.coords.percents.fromReal = this.calcWithStep(this.coords.percents.fromReal);
-                if (this.coords.percents.fromReal > this.coords.percents.toReal) {
-                    this.coords.percents.fromReal = this.coords.percents.toReal;
+                this.fromHandleAsPercent = this.calcWithStep(this.convertToRealPercent(handleX));
+                if (this.fromHandleAsPercent > this.toHandleAsPercent) {
+                    this.fromHandleAsPercent = this.toHandleAsPercent;
                 }
-                this.coords.percents.fromReal = this.checkDiapason(this.coords.percents.fromReal, this.configuration.fromMin, this.configuration.fromMax);
-                this.coords.percents.fromReal = this.checkMinInterval(this.coords.percents.fromReal, this.coords.percents.toReal, "from");
-                this.coords.percents.fromReal = this.checkMaxInterval(this.coords.percents.fromReal, this.coords.percents.toReal, "from");
-
-                this.coords.percents.fromFake = this.convertToFakePercent(this.coords.percents.fromReal);
-
+                this.fromHandleAsPercent = this.checkDiapason(this.fromHandleAsPercent, this.configuration.fromMin, this.configuration.fromMax);
+                this.fromHandleAsPercent = this.checkMinInterval(this.fromHandleAsPercent, this.toHandleAsPercent, "from");
+                this.fromHandleAsPercent = this.checkMaxInterval(this.fromHandleAsPercent, this.toHandleAsPercent, "from");
                 break;
 
             case "to":
@@ -528,37 +401,20 @@ export class RangeSlider implements IRangeSlider {
                     break;
                 }
 
-                this.coords.percents.toReal = this.convertToRealPercent(handleX);
-                this.coords.percents.toReal = this.calcWithStep(this.coords.percents.toReal);
-                if (this.coords.percents.toReal < this.coords.percents.fromReal) {
-                    this.coords.percents.toReal = this.coords.percents.fromReal;
+                this.toHandleAsPercent = this.calcWithStep(this.convertToRealPercent(handleX));
+                if (this.toHandleAsPercent < this.fromHandleAsPercent) {
+                    this.toHandleAsPercent = this.fromHandleAsPercent;
                 }
-                this.coords.percents.toReal = this.checkDiapason(this.coords.percents.toReal, this.configuration.toMin, this.configuration.toMax);
-                this.coords.percents.toReal = this.checkMinInterval(this.coords.percents.toReal, this.coords.percents.fromReal, "to");
-                this.coords.percents.toReal = this.checkMaxInterval(this.coords.percents.toReal, this.coords.percents.fromReal, "to");
-
-                this.coords.percents.toFake = this.convertToFakePercent(this.coords.percents.toReal);
-
+                this.toHandleAsPercent = this.checkDiapason(this.toHandleAsPercent, this.configuration.toMin, this.configuration.toMax);
+                this.toHandleAsPercent = this.checkMinInterval(this.toHandleAsPercent, this.fromHandleAsPercent, "to");
+                this.toHandleAsPercent = this.checkMaxInterval(this.toHandleAsPercent, this.fromHandleAsPercent, "to");
                 break;
 
             case "both":
                 if (this.configuration.fromFixed || this.configuration.toFixed) {
                     break;
                 }
-
-                handleX = RangeSliderConfigurationUtil.toFixed(handleX + this.coords.percents.handle * 0.001);
-
-                this.coords.percents.fromReal = this.convertToRealPercent(handleX) - this.coords.percents.gapLeft;
-                this.coords.percents.fromReal = this.calcWithStep(this.coords.percents.fromReal);
-                this.coords.percents.fromReal = this.checkDiapason(this.coords.percents.fromReal, this.configuration.fromMin, this.configuration.fromMax);
-                this.coords.percents.fromReal = this.checkMinInterval(this.coords.percents.fromReal, this.coords.percents.toReal, "from");
-                this.coords.percents.fromFake = this.convertToFakePercent(this.coords.percents.fromReal);
-
-                this.coords.percents.toReal = this.convertToRealPercent(handleX) + this.coords.percents.gapRight;
-                this.coords.percents.toReal = this.calcWithStep(this.coords.percents.toReal);
-                this.coords.percents.toReal = this.checkDiapason(this.coords.percents.toReal, this.configuration.toMin, this.configuration.toMax);
-                this.coords.percents.toReal = this.checkMinInterval(this.coords.percents.toReal, this.coords.percents.fromReal, "to");
-                this.coords.percents.toFake = this.convertToFakePercent(this.coords.percents.toReal);
+                this.calcForBoth(RangeSliderUtil.toFixed(handleX + handleWidthAsPercent * 0.001));
 
                 break;
 
@@ -566,35 +422,41 @@ export class RangeSlider implements IRangeSlider {
                 this.calcForBothOneTarget(this.convertToRealPercent(handleX));
                 break;
         }
+    }
 
-        if (this.configuration.type === "single") {
-            this.coords.percents.barX = this.coords.percents.handle / 2;
-            this.coords.percents.barW = this.coords.percents.singleFake;
-        } else {
-            this.coords.percents.barX = RangeSliderConfigurationUtil.toFixed(this.coords.percents.fromFake + this.coords.percents.handle / 2);
-            this.coords.percents.barW = RangeSliderConfigurationUtil.toFixed(this.coords.percents.toFake - this.coords.percents.fromFake);
-        }
+    private calcForBoth(handleX: number) {
+        const gapLeft = RangeSliderUtil.toFixed(this.getPointerAsPercent() - this.convertToFakePercent(this.fromHandleAsPercent)),
+            gapRight = RangeSliderUtil.toFixed(this.convertToFakePercent(this.toHandleAsPercent) - this.getPointerAsPercent());
 
-        this.calcMinMax();
-        this.calcLabels();
+        this.fromHandleAsPercent =
+            this.checkMinInterval(
+                this.checkDiapason(
+                    this.calcWithStep(
+                        this.convertToRealPercent(handleX) - gapLeft),
+                    this.configuration.fromMin,
+                    this.configuration.fromMax),
+                this.toHandleAsPercent,
+                "from");
+
+        this.toHandleAsPercent =
+            this.checkMinInterval(
+                this.checkDiapason(
+                    this.calcWithStep(
+                        this.convertToRealPercent(handleX) + gapRight),
+                    this.configuration.toMin,
+                    this.configuration.toMax),
+                this.fromHandleAsPercent,
+                "to");
     }
 
     private calcForBaseTarget() {
-        const w = (this.configuration.max - this.configuration.min) / 100,
-            f = (this.getFromValue() - this.configuration.min) / w,
-            t = (this.getToValue() - this.configuration.min) / w;
+        const w = (this.state.max - this.state.min) / 100,
+            f = (this.getFromValue() - this.state.min) / w,
+            t = (this.getToValue() - this.state.min) / w;
 
-        this.coords.percents.singleReal = RangeSliderConfigurationUtil.toFixed(f);
-        this.coords.percents.fromReal = RangeSliderConfigurationUtil.toFixed(f);
-        this.coords.percents.toReal = RangeSliderConfigurationUtil.toFixed(t);
-
-        this.coords.percents.singleReal = this.checkDiapason(this.coords.percents.singleReal, this.configuration.fromMin, this.configuration.fromMax);
-        this.coords.percents.fromReal = this.checkDiapason(this.coords.percents.fromReal, this.configuration.fromMin, this.configuration.fromMax);
-        this.coords.percents.toReal = this.checkDiapason(this.coords.percents.toReal, this.configuration.toMin, this.configuration.toMax);
-
-        this.coords.percents.singleFake = this.convertToFakePercent(this.coords.percents.singleReal);
-        this.coords.percents.fromFake = this.convertToFakePercent(this.coords.percents.fromReal);
-        this.coords.percents.toFake = this.convertToFakePercent(this.coords.percents.toReal);
+        this.singleHandleAsPercent = this.checkDiapason(RangeSliderUtil.toFixed(f), this.configuration.fromMin, this.configuration.fromMax);
+        this.fromHandleAsPercent = this.checkDiapason(RangeSliderUtil.toFixed(f), this.configuration.fromMin, this.configuration.fromMax);
+        this.toHandleAsPercent = this.checkDiapason(RangeSliderUtil.toFixed(t), this.configuration.toMin, this.configuration.toMax);
 
         this.target = undefined;
     }
@@ -604,7 +466,7 @@ export class RangeSlider implements IRangeSlider {
             return;
         }
 
-        const full = this.coords.percents.toReal - this.coords.percents.fromReal,
+        const full = this.toHandleAsPercent - this.fromHandleAsPercent,
             half = full / 2;
 
         let newFrom = realX - half,
@@ -620,48 +482,45 @@ export class RangeSlider implements IRangeSlider {
             newFrom = newTo - full;
         }
 
-        this.coords.percents.fromReal = this.calcWithStep(newFrom);
-        this.coords.percents.fromReal = this.checkDiapason(this.coords.percents.fromReal, this.configuration.fromMin, this.configuration.fromMax);
-        this.coords.percents.fromFake = this.convertToFakePercent(this.coords.percents.fromReal);
+        this.fromHandleAsPercent = this.checkDiapason(this.calcWithStep(newFrom), this.configuration.fromMin, this.configuration.fromMax);
 
-        this.coords.percents.toReal = this.calcWithStep(newTo);
-        this.coords.percents.toReal = this.checkDiapason(this.coords.percents.toReal, this.configuration.toMin, this.configuration.toMax);
-        this.coords.percents.toFake = this.convertToFakePercent(this.coords.percents.toReal);
+        this.toHandleAsPercent = this.checkDiapason(this.calcWithStep(newTo), this.configuration.toMin, this.configuration.toMax);
     }
 
     /**
      * calculates pointer X in percent
      */
     private calcPointerPercent(): void {
-        if (!this.coords.width.rs) {
-            this.coords.percents.pointer = 0;
+        const rangeSliderWidth = this.domElement.getElement(RangeSliderElement.rangeSlider).offsetWidth;
+
+        if (!rangeSliderWidth) {
             return;
         }
 
-        if (this.coords.x.pointer < 0 || isNaN(this.coords.x.pointer)) {
-            this.coords.x.pointer = 0;
-        } else if (this.coords.x.pointer > this.coords.width.rs) {
-            this.coords.x.pointer = this.coords.width.rs;
+        if (this.currentPosition < 0 || isNaN(this.currentPosition)) {
+            this.currentPosition = 0;
+        } else if (this.currentPosition > rangeSliderWidth) {
+            this.currentPosition = rangeSliderWidth;
         }
+    }
 
-        this.coords.percents.pointer = RangeSliderConfigurationUtil.toFixed(this.coords.x.pointer / this.coords.width.rs * 100);
+    private getPointerAsPercent(): number {
+        return this.domElement.getPercent(this.currentPosition);
     }
 
     private convertToRealPercent(fake: number): number {
-        const full = 100 - this.coords.percents.handle;
+        const full = 100 - this.domElement.getHandleWidthAsPercent();
         return fake / full * 100;
     }
 
     private convertToFakePercent(real: number): number {
-        const full = 100 - this.coords.percents.handle;
+        const full = 100 - this.domElement.getHandleWidthAsPercent();
         return real / 100 * full;
     }
 
     private getHandleX(): number {
-        // eslint-disable-next-line no-console
-        console.log(this.coords);
-        const max = 100 - this.coords.percents.handle;
-        let x = RangeSliderConfigurationUtil.toFixed(this.coords.percents.pointer - this.coords.percents.gap);
+        const max = 100 - this.domElement.getHandleWidthAsPercent();
+        let x = RangeSliderUtil.toFixed(this.getPointerAsPercent() - this.gapBetweenPointerAndHandle);
 
         if (x < 0) {
             x = 0;
@@ -672,16 +531,6 @@ export class RangeSlider implements IRangeSlider {
         return x;
     }
 
-    private calcHandlePercent(): void {
-        if (this.configuration.type === "single") {
-            this.coords.width.handle = RangeSlider.outerWidth(this.domElement.getElement(RangeSliderElement.singleHandle), false);
-        } else {
-            this.coords.width.handle = RangeSlider.outerWidth(this.domElement.getElement(RangeSliderElement.spanFrom), false);
-        }
-
-        this.coords.percents.handle = RangeSliderConfigurationUtil.toFixed(this.coords.width.handle / this.coords.width.rs * 100);
-    }
-
     /**
      * Find closest handle to pointer click
      */
@@ -689,58 +538,12 @@ export class RangeSlider implements IRangeSlider {
         if (this.configuration.type === "single") {
             return "single";
         } else {
-            const mousePoint = this.coords.percents.fromReal + (this.coords.percents.toReal - this.coords.percents.fromReal) / 2;
+            const mousePoint = this.fromHandleAsPercent + (this.toHandleAsPercent - this.fromHandleAsPercent) / 2;
             if (realX >= mousePoint) {
                 return this.configuration.toFixed ? "from" : "to";
             } else {
                 return this.configuration.fromFixed ? "to" : "from";
             }
-        }
-    }
-
-    /**
-     * Measure Min and Max labels width in percent
-     */
-    private calcMinMax(): void {
-        if (!this.coords.width.rs) {
-            return;
-        }
-
-        this.labels.percents.min = this.labels.width.min / this.coords.width.rs * 100;
-        this.labels.percents.max = this.labels.width.max / this.coords.width.rs * 100;
-    }
-
-    /**
-     * Measure labels width and X in percent
-     */
-    private calcLabels(): void {
-        if (!this.coords.width.rs || this.configuration.hideFromTo) {
-            return;
-        }
-
-        if (this.configuration.type === "single") {
-            this.labels.width.single = RangeSlider.outerWidth(this.domElement.getElement(RangeSliderElement.spanSingle), false);
-            this.labels.percents.singleFake = this.labels.width.single / this.coords.width.rs * 100;
-            this.labels.percents.singleLeft = this.coords.percents.singleFake + this.coords.percents.handle / 2 - this.labels.percents.singleFake / 2;
-            this.labels.percents.singleLeft = this.checkEdges(this.labels.percents.singleLeft, this.labels.percents.singleFake);
-        } else {
-            this.labels.width.from = RangeSlider.outerWidth(this.domElement.getElement(RangeSliderElement.from), false);
-            this.labels.percents.fromFake = this.labels.width.from / this.coords.width.rs * 100;
-            this.labels.percents.fromLeft = this.coords.percents.fromFake + this.coords.percents.handle / 2 - this.labels.percents.fromFake / 2;
-            this.labels.percents.fromLeft = RangeSliderConfigurationUtil.toFixed(this.labels.percents.fromLeft);
-            this.labels.percents.fromLeft = this.checkEdges(this.labels.percents.fromLeft, this.labels.percents.fromFake);
-
-            this.labels.width.to = RangeSlider.outerWidth(this.domElement.getElement(RangeSliderElement.to), false);
-            this.labels.percents.toFake = this.labels.width.to / this.coords.width.rs * 100;
-            this.labels.percents.toLeft = this.coords.percents.toFake + this.coords.percents.handle / 2 - this.labels.percents.toFake / 2;
-            this.labels.percents.toLeft = RangeSliderConfigurationUtil.toFixed(this.labels.percents.toLeft);
-            this.labels.percents.toLeft = this.checkEdges(this.labels.percents.toLeft, this.labels.percents.toFake);
-
-            this.labels.width.single = RangeSlider.outerWidth(this.domElement.getElement(RangeSliderElement.spanSingle), false);
-            this.labels.percents.singleFake = this.labels.width.single / this.coords.width.rs * 100;
-            this.labels.percents.singleLeft = (this.labels.percents.fromLeft + this.labels.percents.toLeft + this.labels.percents.toFake) / 2 - this.labels.percents.singleFake / 2;
-            this.labels.percents.singleLeft = RangeSliderConfigurationUtil.toFixed(this.labels.percents.singleLeft);
-            this.labels.percents.singleLeft = this.checkEdges(this.labels.percents.singleLeft, this.labels.percents.singleFake);
         }
     }
 
@@ -778,31 +581,30 @@ export class RangeSlider implements IRangeSlider {
      * Draw handles
      */
     private drawHandles(): void {
-        this.coords.width.rs = RangeSlider.outerWidth(this.domElement.getElement(RangeSliderElement.rangeSlider), false);
+        const rangeSliderWidth = this.domElement.getElement(RangeSliderElement.rangeSlider).offsetWidth;
 
-        if (!this.coords.width.rs) {
+        if (!rangeSliderWidth) {
             return;
         }
 
-        if (this.coords.width.rs !== this.coords.width.oldRs) {
+        if (rangeSliderWidth !== this.previousRangeSliderWidth) {
             this.target = "base";
             this.isResize = true;
         }
 
-        if (this.coords.width.rs !== this.coords.width.oldRs || this.forceRedraw) {
+        if (rangeSliderWidth !== this.previousRangeSliderWidth || this.forceRedraw) {
             // this.setMinMax();
             this.calc(true);
             this.drawLabels();
             if (this.configuration.grid) {
-                this.calcGridMargin();
-                this.calcGridLabels();
+                this.domElement.updateGrid(this.state.getGridLabelsCount());
             }
             this.forceRedraw = true;
-            this.coords.width.oldRs = this.coords.width.rs;
-            this.drawShadow();
+            this.previousRangeSliderWidth = rangeSliderWidth;
+            // this.drawShadow();
         }
 
-        if (!this.coords.width.rs) {
+        if (!rangeSliderWidth) {
             return;
         }
 
@@ -812,33 +614,44 @@ export class RangeSlider implements IRangeSlider {
 
         const from = this.getFromValue(), to = this.getToValue();
         if (this.previousResultFrom !== from || this.previousResultTo !== to || this.forceRedraw || this.isKey) {
-
             this.drawLabels();
 
-
             const barElement = this.domElement.getElement(RangeSliderElement.bar);
-            barElement.style.left = this.coords.percents.barX.toString(10) + "%";
-            barElement.style.width = this.coords.percents.barW.toString(10) + "%";
+            const singleFake = this.domElement.getPercent(this.domElement.getElement(RangeSliderElement.spanSingle).offsetWidth),
+                handleWidthAsPercent = this.domElement.getHandleWidthAsPercent();
 
             if (this.configuration.type === "single") {
+                const singleFakeAsPercent = this.convertToFakePercent(this.singleHandleAsPercent);
                 barElement.style.left = "0";
-                barElement.style.width = this.coords.percents.barW.toString(10) + this.coords.percents.barX.toString(10) + "%";
+                barElement.style.width = `${(singleFakeAsPercent + (handleWidthAsPercent / 2)).toString(10)}%`;
+                this.domElement.getElement(RangeSliderElement.singleHandle).style.left = singleFakeAsPercent.toString(10) + "%";
 
-                this.domElement.getElement(RangeSliderElement.singleHandle).style.left = this.coords.percents.singleFake.toString(10) + "%";
+                const singleLeft = this.checkEdges(singleFakeAsPercent + (handleWidthAsPercent / 2) - (singleFake / 2), singleFake);
 
-                this.domElement.getElement(RangeSliderElement.spanSingle).style.left = this.labels.percents.singleLeft.toString(10) + "%";
+                this.domElement.getElement(RangeSliderElement.spanSingle).style.left = singleLeft.toString(10) + "%";
             } else {
-                this.domElement.getElement(RangeSliderElement.spanFrom).style.left = this.coords.percents.fromFake.toString(10) + "%";
-                this.domElement.getElement(RangeSliderElement.spanTo).style.left = this.coords.percents.toFake.toString(10) + "%";
+                const fromAsFakePercent = this.convertToFakePercent(this.fromHandleAsPercent),
+                    toAsFakePercent = this.convertToFakePercent(this.toHandleAsPercent);
+                barElement.style.left = RangeSliderUtil.toFixed(fromAsFakePercent + (handleWidthAsPercent / 2)).toString(10) + "%";
+                barElement.style.width = RangeSliderUtil.toFixed(toAsFakePercent - fromAsFakePercent).toString(10) + "%";
 
+                this.domElement.getElement(RangeSliderElement.spanFrom).style.left = fromAsFakePercent.toString(10) + "%";
+                this.domElement.getElement(RangeSliderElement.spanTo).style.left = toAsFakePercent.toString(10) + "%";
+
+                const fromFake = this.domElement.getPercent(this.domElement.getElement(RangeSliderElement.from).offsetWidth);
+                const fromLeft = this.checkEdges(RangeSliderUtil.toFixed(fromAsFakePercent + (handleWidthAsPercent / 2) - fromFake / 2), fromFake);
                 if (this.previousResultFrom !== from || this.forceRedraw) {
-                    this.domElement.getElement(RangeSliderElement.from).style.left = this.labels.percents.fromLeft.toString(10) + "%";
-                }
-                if (this.previousResultTo !== to || this.forceRedraw) {
-                    this.domElement.getElement(RangeSliderElement.to).style.left = this.labels.percents.toLeft.toString(10) + "%";
+                    this.domElement.getElement(RangeSliderElement.from).style.left = fromLeft.toString(10) + "%";
                 }
 
-                this.domElement.getElement(RangeSliderElement.spanSingle).style.left = this.labels.percents.singleLeft.toString(10) + "%";
+                const toFake = this.domElement.getPercent(this.domElement.getElement(RangeSliderElement.to).offsetWidth);
+                const toLeft = this.checkEdges(RangeSliderUtil.toFixed(toAsFakePercent + (handleWidthAsPercent / 2) - (toFake / 2)), toFake);
+                if (this.previousResultTo !== to || this.forceRedraw) {
+                    this.domElement.getElement(RangeSliderElement.to).style.left = toLeft.toString(10) + "%";
+                }
+
+                const singleLeft = this.checkEdges(RangeSliderUtil.toFixed((fromLeft + toLeft + toFake) / 2 - singleFake / 2), singleFake);
+                this.domElement.getElement(RangeSliderElement.spanSingle).style.left = singleLeft.toString(10) + "%";
             }
 
             this.writeToInput();
@@ -852,12 +665,12 @@ export class RangeSlider implements IRangeSlider {
 
             // callbacks call
             if (!this.isResize && !this.isUpdate && !this.isStart && !this.isFinish) {
-                this.callOnChange();
+                this.callOn(CallbackType.onChange);
             }
             if (this.isKey || this.isClick) {
                 this.isKey = false;
                 this.isClick = false;
-                this.callOnFinish();
+                this.callOn(CallbackType.onFinish);
             }
 
             this.isUpdate = false;
@@ -885,37 +698,49 @@ export class RangeSlider implements IRangeSlider {
             return;
         }
 
-        const from = this.getFromValue(), to = this.getToValue();
+        // this.labels.width.single = RangeSlider.outerWidth(this.domElement.getElement(RangeSliderElement.spanSingle), false);
+        // this.labels.percents.singleFake = this.labels.width.single / this.coords.width.rs * 100;
+        // this.labels.percents.singleLeft = this.coords.percents.singleFake + this.coords.percents.handle / 2 - this.labels.percents.singleFake / 2;
+        // this.labels.percents.singleLeft = this.checkEdges(this.labels.percents.singleLeft, this.labels.percents.singleFake);
+
+        const from = this.getFromValue(),
+            to = this.getToValue(),
+            minLabelAsPercents = this.domElement.getPercent(this.domElement.getElement(RangeSliderElement.min).offsetWidth),
+            maxLabelAsPercents = this.domElement.getPercent(this.domElement.getElement(RangeSliderElement.max).offsetWidth),
+            fromFake = this.domElement.getPercent(this.domElement.getElement(RangeSliderElement.from).offsetWidth),
+            singleFake = this.domElement.getPercent(this.domElement.getElement(RangeSliderElement.spanSingle).offsetWidth),
+            handleWidthAsPercent = this.domElement.getHandleWidthAsPercent()
+
         if (this.configuration.type === "single") {
             this.domElement.getElement(RangeSliderElement.spanSingle).innerHTML = this.state.decorate(from);
 
-            this.calcLabels();
+            const singleLeft = this.checkEdges(this.convertToFakePercent(this.singleHandleAsPercent) + (handleWidthAsPercent / 2) - (singleFake / 2), singleFake);
 
-            if (this.labels.percents.singleLeft < this.labels.percents.min + 1) {
+            if (singleLeft < minLabelAsPercents + 1) {
                 this.domElement.getElement(RangeSliderElement.min).style.visibility = "hidden";
             } else {
                 this.domElement.getElement(RangeSliderElement.min).style.visibility = "visible";
             }
 
-            if (this.labels.percents.singleLeft + this.labels.percents.singleFake > 100 - this.labels.percents.max - 1) {
+            if (singleLeft + singleFake > 100 - maxLabelAsPercents - 1) {
                 this.domElement.getElement(RangeSliderElement.max).style.visibility = "hidden";
             } else {
                 this.domElement.getElement(RangeSliderElement.max).style.visibility = "visible";
             }
 
         } else {
-            this.domElement.getElement(RangeSliderElement.spanSingle).innerHTML = this.state.decorateForCollapsedValues(from,to);
+            this.domElement.getElement(RangeSliderElement.spanSingle).innerHTML = this.state.decorateForCollapsedValues(from, to);
             this.domElement.getElement(RangeSliderElement.from).innerHTML = this.state.decorate(from);
             this.domElement.getElement(RangeSliderElement.to).innerHTML = this.state.decorate(to);
 
-            this.calcLabels();
+            const fromLeft = this.checkEdges(RangeSliderUtil.toFixed(this.convertToFakePercent(this.fromHandleAsPercent) + (handleWidthAsPercent / 2) - (fromFake / 2)), fromFake),
+                toFake = this.domElement.getPercent(this.domElement.getElement(RangeSliderElement.to).offsetWidth),
+                toLeft = this.checkEdges(RangeSliderUtil.toFixed(this.convertToFakePercent(this.toHandleAsPercent) + (handleWidthAsPercent / 2) - (toFake / 2)), toFake),
+                singleLeft = this.checkEdges(RangeSliderUtil.toFixed((fromLeft + toLeft + toFake) / 2 - singleFake / 2), singleFake),
+                min = Math.min(singleLeft, fromLeft);
+            let max = Math.max(singleLeft + singleFake, toLeft + toFake);
 
-            const min = Math.min(this.labels.percents.singleLeft, this.labels.percents.fromLeft),
-                singleLeft = this.labels.percents.singleLeft + this.labels.percents.singleFake,
-                toLeft = this.labels.percents.toLeft + this.labels.percents.toFake;
-            let max = Math.max(singleLeft, toLeft);
-
-            if (this.labels.percents.fromLeft + this.labels.percents.fromFake >= this.labels.percents.toLeft) {
+            if (fromLeft + fromFake >= toLeft) {
                 this.domElement.getElement(RangeSliderElement.from).style.visibility = "hidden";
                 this.domElement.getElement(RangeSliderElement.to).style.visibility = "hidden";
                 this.domElement.getElement(RangeSliderElement.spanSingle).style.visibility = "visible";
@@ -942,82 +767,16 @@ export class RangeSlider implements IRangeSlider {
                 this.domElement.getElement(RangeSliderElement.spanSingle).style.visibility = "hidden";
             }
 
-            if (min < this.labels.percents.min + 1) {
+            if (min < minLabelAsPercents + 1) {
                 this.domElement.getElement(RangeSliderElement.min).style.visibility = "hidden";
             } else {
                 this.domElement.getElement(RangeSliderElement.min).style.visibility = "visible";
             }
 
-            if (max > 100 - this.labels.percents.max - 1) {
+            if (max > 100 - maxLabelAsPercents - 1) {
                 this.domElement.getElement(RangeSliderElement.max).style.visibility = "hidden";
             } else {
                 this.domElement.getElement(RangeSliderElement.max).style.visibility = "visible";
-            }
-
-        }
-    }
-
-    /**
-     * Draw shadow intervals
-     */
-    private drawShadow(): void {
-        const o = this.configuration,
-            isFromMin = typeof o.fromMin === "number" && !isNaN(o.fromMin),
-            isFromMax = typeof o.fromMax === "number" && !isNaN(o.fromMax),
-            isToMin = typeof o.toMin === "number" && !isNaN(o.toMin),
-            isToMax = typeof o.toMax === "number" && !isNaN(o.toMax);
-
-        let fromMin: number,
-            fromMax: number,
-            toMin: number,
-            toMax: number;
-
-        if (o.type === "single") {
-            const shadowSingle = this.domElement.getElement(RangeSliderElement.shadowSingle);
-            if (o.fromShadow && (isFromMin || isFromMax)) {
-                fromMin = this.convertToPercent(isFromMin ? o.fromMin : o.min);
-                fromMax = this.convertToPercent(isFromMax ? o.fromMax : o.max) - fromMin;
-                fromMin = RangeSliderConfigurationUtil.toFixed(fromMin - this.coords.percents.handle / 100 * fromMin);
-                fromMax = RangeSliderConfigurationUtil.toFixed(fromMax - this.coords.percents.handle / 100 * fromMax);
-                fromMin = fromMin + this.coords.percents.handle / 2;
-
-                shadowSingle.style.display = "block";
-                shadowSingle.style.left = fromMin.toString(10) + "%";
-                shadowSingle.style.width = fromMax.toString(10) + "%";
-            } else {
-                shadowSingle.style.display = "none";
-            }
-        } else {
-            const shadowFrom = this.domElement.getElement(RangeSliderElement.shadowFrom);
-
-            if (o.fromShadow && (isFromMin || isFromMax)) {
-                fromMin = this.convertToPercent(isFromMin ? o.fromMin : o.min);
-                fromMax = this.convertToPercent(isFromMax ? o.fromMax : o.max) - fromMin;
-                fromMin = RangeSliderConfigurationUtil.toFixed(fromMin - this.coords.percents.handle / 100 * fromMin);
-                fromMax = RangeSliderConfigurationUtil.toFixed(fromMax - this.coords.percents.handle / 100 * fromMax);
-                fromMin = fromMin + this.coords.percents.handle / 2;
-
-                shadowFrom.style.display = "block";
-                shadowFrom.style.left = fromMin.toString(10) + "%";
-                shadowFrom.style.width = fromMax.toString(10) + "%";
-            } else {
-                shadowFrom.style.display = "none";
-            }
-
-            const shadowTo = this.domElement.getElement(RangeSliderElement.shadowTo);
-
-            if (o.toShadow && (isToMin || isToMax)) {
-                toMin = this.convertToPercent(isToMin ? o.toMin : o.min);
-                toMax = this.convertToPercent(isToMax ? o.toMax : o.max) - toMin;
-                toMin = RangeSliderConfigurationUtil.toFixed(toMin - this.coords.percents.handle / 100 * toMin);
-                toMax = RangeSliderConfigurationUtil.toFixed(toMax - this.coords.percents.handle / 100 * toMax);
-                toMin = toMin + this.coords.percents.handle / 2;
-
-                shadowTo.style.display = "block";
-                shadowTo.style.left = toMin.toString(10) + "%";
-                shadowTo.style.width = toMax.toString(10) + "%";
-            } else {
-                shadowTo.style.display = "none";
             }
         }
     }
@@ -1029,8 +788,8 @@ export class RangeSlider implements IRangeSlider {
         const from = this.getFromValue(),
             input = this.domElement.getInput();
         if (this.configuration.type === "single") {
-            if (this.configuration.values.length) {
-                const value = this.configuration.values[from];
+            if (this.state.hasCustomValues()) {
+                const value = this.state.getCustomValue(from);
                 input.value = typeof value === "number" ? value.toString(10) : value;
             } else {
                 input.value = from.toString(10);
@@ -1038,8 +797,8 @@ export class RangeSlider implements IRangeSlider {
             input.dataset.from = from.toString(10);
         } else {
             const to = this.getToValue();
-            if (this.configuration.values.length) {
-                input.value = `${this.configuration.values[from]}${this.configuration.inputValuesSeparator}${this.configuration.values[to]}`;
+            if (this.state.hasCustomValues()) {
+                input.value = `${this.state.getCustomValue(from)}${this.configuration.inputValuesSeparator}${this.state.getCustomValue(to)}`;
             } else {
                 input.value = `${from}${this.configuration.inputValuesSeparator}${to}`;
             }
@@ -1050,9 +809,9 @@ export class RangeSlider implements IRangeSlider {
 
     private getFromValue(): number {
         if (this.configuration.type === SliderType.single) {
-            return this.state.convertToValue(this.coords.percents.singleReal);
+            return this.state.convertToValue(this.singleHandleAsPercent);
         } else {
-            return this.state.convertToValue(this.coords.percents.fromReal);
+            return this.state.convertToValue(this.fromHandleAsPercent);
         }
     }
 
@@ -1060,7 +819,7 @@ export class RangeSlider implements IRangeSlider {
         if (this.configuration.type === SliderType.single) {
             return this.configuration.to;
         } else {
-            return this.state.convertToValue(this.coords.percents.toReal);
+            return this.state.convertToValue(this.toHandleAsPercent);
         }
     }
 
@@ -1068,56 +827,17 @@ export class RangeSlider implements IRangeSlider {
     // Callbacks
     // =============================================================================================================
 
-    private callOnStart(): void {
+    private callOn(callbackType: CallbackType) {
         this.writeToInput();
-
-        if (this.configuration.onStart && typeof this.configuration.onStart === "function") {
-            const event = new RangeSliderEvent(this.configuration, this.state, this.domElement.getInput(), this.domElement.getContainer(), this.coords.percents);
-            if (this.configuration.callbackScope) {
-                this.configuration.onStart.call(this.configuration.callbackScope, event);
-            } else {
-                this.configuration.onStart(event);
-            }
+        if (!this.configuration[callbackType] || typeof this.configuration[callbackType] !== "function") {
+            return;
         }
-    }
-
-    private callOnChange(): void {
-        this.writeToInput();
-
-        if (this.configuration.onChange && typeof this.configuration.onChange === "function") {
-            const event = new RangeSliderEvent(this.configuration, this.state, this.domElement.getInput(), this.domElement.getContainer(), this.coords.percents);
-            if (this.configuration.callbackScope) {
-                this.configuration.onChange.call(this.configuration.callbackScope, event);
-            } else {
-                this.configuration.onChange(event);
-            }
-        }
-    }
-
-    private callOnFinish(): void {
-        this.writeToInput();
-
-        if (this.configuration.onFinish && typeof this.configuration.onFinish === "function") {
-            const event = new RangeSliderEvent(this.configuration, this.state, this.domElement.getInput(), this.domElement.getContainer(), this.coords.percents);
-            if (this.configuration.callbackScope) {
-                this.configuration.onFinish.call(this.configuration.callbackScope, event);
-            } else {
-                this.configuration.onFinish(event);
-            }
-        }
-    }
-
-    private callOnUpdate(): void {
-        this.writeToInput();
-
-        if (this.configuration.onUpdate && typeof this.configuration.onUpdate === "function") {
-            const event = new RangeSliderEvent(this.configuration, this.state, this.domElement.getInput(), this.domElement.getContainer(), this.coords.percents);
-            if (this.configuration.callbackScope) {
-                this.configuration.onUpdate.call(this.configuration.callbackScope, event);
-            } else {
-                this.configuration.onUpdate(event);
-            }
-        }
+        const event = new RangeSliderEvent(this.configuration.type, this.state, this.domElement.getInput(), this.domElement.getContainer(), {
+            fromReal: this.fromHandleAsPercent,
+            singleReal: this.singleHandleAsPercent,
+            toReal: this.toHandleAsPercent
+        });
+        this.configuration[callbackType].call(this.configuration.callbackScope ? this.configuration.callbackScope : this, event);
     }
 
     // =============================================================================================================
@@ -1138,32 +858,11 @@ export class RangeSlider implements IRangeSlider {
     }
 
     /**
-     * Convert real value to percent
-     */
-    private convertToPercent(value: number, noMin = false): number {
-        const diapason = this.configuration.max - this.configuration.min,
-            onePercent = diapason / 100;
-        let val;
-
-        if (!diapason) {
-            this.noDiapason = true;
-            return 0;
-        }
-
-        if (noMin) {
-            val = value;
-        } else {
-            val = value - this.configuration.min;
-        }
-
-        return RangeSliderConfigurationUtil.toFixed(val / onePercent);
-    }
-
-    /**
      * Round percent value with step
      */
     private calcWithStep(percent: number): number {
-        let rounded = Math.round(percent / this.coords.percents.step) * this.coords.percents.step;
+        const stepAsPercents = this.state.getStepAsPercent();
+        let rounded = Math.round(percent / stepAsPercents) * stepAsPercents;
 
         if (rounded > 100) {
             rounded = 100;
@@ -1172,7 +871,7 @@ export class RangeSlider implements IRangeSlider {
             rounded = 100;
         }
 
-        return RangeSliderConfigurationUtil.toFixed(rounded);
+        return RangeSliderUtil.toFixed(rounded);
     }
 
     private checkMinInterval(currentPercent: number, nextPercent: number, type): number {
@@ -1203,18 +902,18 @@ export class RangeSlider implements IRangeSlider {
             }
         }
 
-        return this.convertToPercent(current);
+        return this.state.convertToPercent(current);
     }
 
     private checkDiapason(numberPercent: number, min: number, max: number) {
         let num = this.state.convertToValue(numberPercent);
 
         if (typeof min !== "number") {
-            min = this.configuration.min;
+            min = this.state.min;
         }
 
         if (typeof max !== "number") {
-            max = this.configuration.max;
+            max = this.state.max;
         }
 
         if (num < min) {
@@ -1225,12 +924,12 @@ export class RangeSlider implements IRangeSlider {
             num = max;
         }
 
-        return this.convertToPercent(num);
+        return this.state.convertToPercent(num);
     }
 
     private checkEdges(left: number, width: number): number {
         if (!this.configuration.forceEdges) {
-            return RangeSliderConfigurationUtil.toFixed(left);
+            return RangeSliderUtil.toFixed(left);
         }
 
         if (left < 0) {
@@ -1239,93 +938,7 @@ export class RangeSlider implements IRangeSlider {
             left = 100 - width;
         }
 
-        return RangeSliderConfigurationUtil.toFixed(left);
-    }
-
-    // =============================================================================================================
-    // Grid
-    // =============================================================================================================
-
-    private calcGridLabels(): void {
-        const start: number[] = [], finish: number[] = [], num = this.coords.bigNum;
-        for (let i = 0; i < num; i++) {
-            this.coords.bigW[i] = RangeSlider.outerWidth(this.domElement.getLabel(i), false);
-            this.coords.bigP[i] = RangeSliderConfigurationUtil.toFixed(this.coords.bigW[i] / this.coords.width.rs * 100);
-            this.coords.bigX[i] = RangeSliderConfigurationUtil.toFixed(this.coords.bigP[i] / 2);
-
-            start[i] = RangeSliderConfigurationUtil.toFixed(this.coords.big[i] - this.coords.bigX[i]);
-            finish[i] = RangeSliderConfigurationUtil.toFixed(start[i] + this.coords.bigP[i]);
-        }
-
-        if (this.configuration.forceEdges) {
-            if (start[0] < -this.coords.gridGap) {
-                start[0] = -this.coords.gridGap;
-                finish[0] = RangeSliderConfigurationUtil.toFixed(start[0] + this.coords.bigP[0]);
-
-                this.coords.bigX[0] = this.coords.gridGap;
-            }
-
-            if (finish[num - 1] > 100 + this.coords.gridGap) {
-                finish[num - 1] = 100 + this.coords.gridGap;
-                start[num - 1] = RangeSliderConfigurationUtil.toFixed(finish[num - 1] - this.coords.bigP[num - 1]);
-
-                this.coords.bigX[num - 1] = RangeSliderConfigurationUtil.toFixed(this.coords.bigP[num - 1] - this.coords.gridGap);
-            }
-        }
-
-        this.calcGridCollision(2, start, finish);
-        this.calcGridCollision(4, start, finish);
-
-        for (let i = 0; i < num; i++) {
-            const label = this.domElement.getLabel(i);
-
-            if (this.coords.bigX[i] !== Number.POSITIVE_INFINITY) {
-                label.style.marginLeft = `${-this.coords.bigX[i]}%`;
-            }
-        }
-    }
-
-    private calcGridCollision(step, start: number[], finish: number[]): void {
-        let nextIndex: number;
-        const num = this.coords.bigNum;
-
-        for (let i = 0; i < num; i += step) {
-            nextIndex = i + step / 2;
-            if (nextIndex >= num) {
-                break;
-            }
-
-            const label = this.domElement.getLabel(nextIndex);
-
-            if (finish[i] <= start[nextIndex]) {
-                label.style.visibility = "visible";
-            } else {
-                label.style.visibility = "hidden";
-            }
-        }
-    }
-
-    private calcGridMargin(): void {
-        if (!this.configuration.gridMargin) {
-            return;
-        }
-
-        this.coords.width.rs = RangeSlider.outerWidth(this.domElement.getElement(RangeSliderElement.rangeSlider), false);
-        if (!this.coords.width.rs) {
-            return;
-        }
-
-        if (this.configuration.type === "single") {
-            this.coords.width.handle = RangeSlider.outerWidth(this.domElement.getElement(RangeSliderElement.singleHandle), false);
-        } else {
-            this.coords.width.handle = RangeSlider.outerWidth(this.domElement.getElement(RangeSliderElement.spanFrom), false);
-        }
-        this.coords.percents.handle = RangeSliderConfigurationUtil.toFixed(this.coords.width.handle / this.coords.width.rs * 100);
-        this.coords.gridGap = RangeSliderConfigurationUtil.toFixed(this.coords.percents.handle / 2 - 0.1);
-
-        const grid = this.domElement.getElement(RangeSliderElement.grid);
-        grid.style.width = `${RangeSliderConfigurationUtil.toFixed(100 - this.coords.percents.handle)}%`;
-        grid.style.left = `${this.coords.gridGap}%`;
+        return RangeSliderUtil.toFixed(left);
     }
 
     // =============================================================================================================
@@ -1340,14 +953,13 @@ export class RangeSlider implements IRangeSlider {
         this.isUpdate = true;
 
         // Todo changer pour updateScene ? => éviter d'avoir à garder from courant et to courant dans configuration
-        const from = this.getFromValue();
-        this.configuration.from = from;
+        this.configuration.from = this.getFromValue();
         if (this.configuration.type === SliderType.double) {
             this.configuration.to = this.getToValue();
         }
-        this.updateCheck = {from: from, to: this.configuration.to};
+        const updateCheck = {from: this.configuration.from, to: this.configuration.to};
 
-        this.configuration = RangeSliderConfigurationUtil.mergeConfigurations(this.configuration, options, this.updateCheck);
+        this.configuration = RangeSliderConfigurationUtil.mergeConfigurations(this.configuration, options, updateCheck);
         this.state = new RangeSliderState(this.configuration);
 
         this.toggleInput();
@@ -1374,5 +986,8 @@ export class RangeSlider implements IRangeSlider {
         this.remove();
         this.input = undefined;
         this.configuration = undefined;
+        this.state = undefined;
+        this.domElement = undefined;
+        this.eventBus = undefined;
     }
 }
