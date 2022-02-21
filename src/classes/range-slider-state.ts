@@ -123,6 +123,17 @@ export class RangeSliderState {
         return (this.step * 100) / (this.max - this.min);
     }
 
+    public getPercentAccordingToStep(percent: number): number {
+        const stepAsPercents = this.getStepAsPercent();
+        const rounded = Math.round(percent / stepAsPercents) * stepAsPercents;
+
+        if (rounded >= 100) {
+            return 100;
+        }
+
+        return RangeSliderUtil.toFixed(rounded);
+    }
+
     public decorateMinValue(): string {
         return this.decorate(this._min);
     }

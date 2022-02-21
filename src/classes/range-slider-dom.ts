@@ -1,4 +1,4 @@
-import {EventType, SliderType} from "../enums";
+import {EventType, SliderType, TargetType} from "../enums";
 import {RangeSliderTemplate} from "./range-slider-template";
 import {IRangeSliderOptions} from "../interfaces/range-slider-options";
 import {RangeSliderState} from "./range-slider-state";
@@ -36,8 +36,8 @@ export class RangeSliderDOM {
         return body;
     }
 
-    private readonly input: HTMLInputElement;
-    private readonly container: Element; // AKA slider
+    private readonly _input: HTMLInputElement;
+    private readonly _container: Element; // AKA slider
     private readonly eventBus: EventBus;
     private _isPointerDragging = false;
 
@@ -52,15 +52,15 @@ export class RangeSliderDOM {
     private readonly _keyDown = (event: KeyboardEvent) => this.keyDown(event);
 
     constructor(input: HTMLInputElement, configuration: IRangeSliderOptions<number>, count: number, state: RangeSliderState, eventBus: EventBus) {
-        this.input = input;
+        this._input = input;
 
-        this.input.insertAdjacentHTML("beforebegin", RangeSliderTemplate.containerHtml(configuration.skin, count, configuration.extraClasses));
-        this.input.readOnly = true;
-        const container = this.input.previousElementSibling;
+        this._input.insertAdjacentHTML("beforebegin", RangeSliderTemplate.containerHtml(configuration.skin, count, configuration.extraClasses));
+        this._input.readOnly = true;
+        const container = this._input.previousElementSibling;
         if (container === null) {
             throw Error("Range slider could not be found")
         }
-        this.container = container;
+        this._container = container;
 
         this.forceEdges = configuration.forceEdges;
         this.gridMargin = configuration.gridMargin;
@@ -80,14 +80,14 @@ export class RangeSliderDOM {
     }
 
     private buildRangeSlider(configuration: IRangeSliderOptions<number>) {
-        this.container.innerHTML = RangeSliderTemplate.baseHtml;
+        this._container.innerHTML = RangeSliderTemplate.baseHtml;
 
         if (this.type === SliderType.single) {
-            this.container.insertAdjacentHTML("beforeend", RangeSliderTemplate.singleHtml);
+            this._container.insertAdjacentHTML("beforeend", RangeSliderTemplate.singleHtml);
             this.getElement(RangeSliderElement.from).style.visibility = "hidden";
             this.getElement(RangeSliderElement.to).style.visibility = "hidden";
         } else {
-            this.container.insertAdjacentHTML("beforeend", RangeSliderTemplate.doubleHtml);
+            this._container.insertAdjacentHTML("beforeend", RangeSliderTemplate.doubleHtml);
 
             if (configuration.from > configuration.min && configuration.to === configuration.max) {
                 this.getElement(RangeSliderElement.spanFrom).classList.add("type_last");
@@ -104,9 +104,9 @@ export class RangeSliderDOM {
 
         if (configuration.disable) {
             this.disable();
-            this.input.disabled = true;
+            this._input.disabled = true;
         } else {
-            this.input.disabled = false;
+            this._input.disabled = false;
             this.enable();
         }
 
@@ -165,7 +165,7 @@ export class RangeSliderDOM {
             html.push(`<span class="irs-grid-text js-grid-text-${i}" style="left: ${spaceForCurrentLabel}%">${result}</span>`);
         }
 
-        this.getContainer().classList.toggle("irs-with-grid");
+        this.container.classList.toggle("irs-with-grid");
         this.getElement(RangeSliderElement.grid).innerHTML = html.join("");
     }
 
@@ -250,19 +250,23 @@ export class RangeSliderDOM {
     }
 
     public remove() {
-        this.container.parentNode?.removeChild(this.container);
+        this._container.parentNode?.removeChild(this._container);
     }
 
-    public getInput() {
-        return this.input;
+    public get input() {
+        return this._input;
     }
 
-    public getContainer() {
-        return this.container;
+    public get container() {
+        return this._container;
+    }
+
+    public get isDragging() {
+        return this._isPointerDragging;
     }
 
     public getElement(elementType: RangeSliderElement): HTMLSpanElement {
-        const element = this.container.querySelector<HTMLSpanElement>(elementType);
+        const element = this._container.querySelector<HTMLSpanElement>(elementType);
         if (element === null) {
             throw Error(`Element with class "${elementType}" was not found`);
         }
@@ -277,7 +281,6 @@ export class RangeSliderDOM {
         }
         return label;
     }
-
 
     public addEventListener(type: SliderType, dragInterval: boolean, keyboard: boolean,
                             pointerFocus: { (): void }) {
@@ -397,14 +400,14 @@ export class RangeSliderDOM {
     }
 
     public removeHoverState() {
-        const element = this.container.querySelector(".state_hover");
+        const element = this._container.querySelector(".state_hover");
         if (element) {
             element.classList.remove("state_hover");
         }
     }
 
     public contains(element: Element): boolean {
-        return this.container.contains(element);
+        return this._container.contains(element);
     }
 
     public getHandleWidthAsPercent(): number {
@@ -420,21 +423,32 @@ export class RangeSliderDOM {
         return RangeSliderUtil.toFixed(value / rangeSliderWidth * 100);
     }
 
+    public constrainValue(left: number, width: number): number {
+        if(this.forceEdges) {
+            if (left < 0) {
+                left = 0;
+            } else if (left > 100 - width) {
+                left = 100 - width;
+            }
+        }
+        return RangeSliderUtil.toFixed(left);
+    }
+
     private disable() {
-        this.container.innerHTML = RangeSliderTemplate.disableHtml;
-        this.container.classList.add("irs-disabled");
+        this._container.innerHTML = RangeSliderTemplate.disableHtml;
+        this._container.classList.add("irs-disabled");
     }
 
     private enable(): void {
         try {
             const mask = this.getElement(RangeSliderElement.mask);
             if (mask) {
-                this.container.removeChild(mask);
+                this._container.removeChild(mask);
             }
         } catch (error) {
             // Rien à désactiver
         }
-        this.container.classList.remove("irs-disabled");
+        this._container.classList.remove("irs-disabled");
     }
 
     private static getIsOldIe(): boolean {
@@ -587,7 +601,7 @@ export class RangeSliderDOM {
         if (RangeSliderDOM.isRightClick(event)) {
             return;
         }
-        this.eventBus.emit(EventType.click, {target: "click", x: RangeSliderDOM.getX(event)});
+        this.eventBus.emit(EventType.click, {target: TargetType.click, x: RangeSliderDOM.getX(event)});
     }
 
     private keyDown(event: KeyboardEvent): void {
@@ -640,18 +654,18 @@ export class RangeSliderDOM {
         return e instanceof MouseEvent ? e.pageX : e.touches && e.touches[0].pageX;
     }
 
-    private getTargetFromElement(element: Element): string {
+    private getTargetFromElement(element: Element): TargetType {
         if (this.getElement(RangeSliderElement.bar).contains(element)) {
-            return "both";
+            return TargetType.both;
         }
 
         if (this.type === SliderType.single) {
             if (this.getElement(RangeSliderElement.singleHandle).contains(element)) {
-                return "single";
+                return TargetType.single;
             }
 
             if (this.getElement(RangeSliderElement.spanSingle).contains(element)) {
-                return "single";
+                return TargetType.single;
             }
         } else {
             if (this.getElement(RangeSliderElement.spanSingle).contains(element)) {
@@ -659,11 +673,11 @@ export class RangeSliderDOM {
             }
 
             if (this.getElement(RangeSliderElement.from).contains(element) || this.getElement(RangeSliderElement.spanFrom).contains(element)) {
-                return "from";
+                return TargetType.from;
             }
 
             if (this.getElement(RangeSliderElement.to).contains(element) || this.getElement(RangeSliderElement.spanTo).contains(element)) {
-                return "to";
+                return TargetType.to;
             }
         }
         throw Error(`Can't find target from element class "${element.className}"`);

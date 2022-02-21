@@ -13,3 +13,7 @@ export enum EventType {
 export enum CallbackType {
     onChange = "onChange", onFinish = "onFinish", onStart = "onStart", onUpdate = "onUpdate"
 }
+
+export enum TargetType {
+    base = "base", both = "both", bothOne = "bothOne", click = "click", from = "from", single = "single", to = "to"
+}

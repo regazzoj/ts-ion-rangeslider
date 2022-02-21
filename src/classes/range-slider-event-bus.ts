@@ -1,6 +1,6 @@
-import {EventType} from "../enums";
+import {EventType, TargetType} from "../enums";
 
-export class EventBus<DetailType = {eventTarget?: EventTarget; keyCode?: string; target?:string; x?:number}> {
+export class EventBus<DetailType = {eventTarget?: EventTarget; keyCode?: string; target?:TargetType; x?:number}> {
     private readonly _eventTarget: EventTarget;
     constructor() { this._eventTarget = new EventTarget(); }
     on(type: EventType, listener: (event: CustomEvent<DetailType>) => void) { this._eventTarget.addEventListener(type, listener); }
