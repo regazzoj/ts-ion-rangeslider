@@ -1,31 +1,9 @@
-import {EventType, SliderType, TargetType} from "../enums";
+import {EventType, RangeSliderElement, SliderType, TargetType} from "../enums";
 import {RangeSliderTemplate} from "./range-slider-template";
 import {IRangeSliderOptions} from "../interfaces/range-slider-options";
 import {RangeSliderState} from "./range-slider-state";
 import {EventBus} from "./range-slider-event-bus";
 import {RangeSliderUtil} from "./range-slider-util";
-
-export enum RangeSliderElement {
-    bar = ".irs-bar",
-    from = ".irs-from",
-    grid = ".irs-grid",
-    line = ".irs-line",
-    max = ".irs-max",
-    min = ".irs-min",
-    rangeSlider = ".irs", // AKA rs
-    spanSingle = ".irs-single", // anciennement single
-    to = ".irs-to",
-    //single
-    shadowSingle = ".shadow-single",
-    singleHandle = ".irs-handle.single", //anciennement spanSingle
-    //double
-    shadowFrom = ".shadow-from",
-    shadowTo = ".shadow-to",
-    spanFrom = ".irs-handle.from",
-    spanTo = ".irs-handle.to",
-    //mask
-    mask = ".irs-disable-mask"
-}
 
 export class RangeSliderDOM {
     private static get body(): HTMLBodyElement {
@@ -170,11 +148,11 @@ export class RangeSliderDOM {
     }
 
     public updateGrid(gridLabelsCount: number) {
-        const widthHandleAsPercent = this.calcGridMargin();
-        this.calcGridLabels(gridLabelsCount, RangeSliderUtil.toFixed(widthHandleAsPercent / 2));
+        const widthHandleAsPercent = this.getGridMargin();
+        this.updateGridLabels(gridLabelsCount, RangeSliderUtil.toFixed(widthHandleAsPercent / 2));
     }
 
-    private calcGridMargin(): number {
+    private getGridMargin(): number {
         if (!this.gridMargin) {
             return;
         }
@@ -197,7 +175,7 @@ export class RangeSliderDOM {
         return widthHandleAsPercent;
     }
 
-    private calcGridLabels(gridLabelsCount: number, halfWidthHandleAsPercent: number): void {
+    private updateGridLabels(gridLabelsCount: number, halfWidthHandleAsPercent: number): void {
         const start: number[] = [], finish: number[] = [],
             percentBetweenTwoLabels = RangeSliderUtil.toFixed(100 / (gridLabelsCount - 1));
 
@@ -228,11 +206,11 @@ export class RangeSliderDOM {
             }
         }
 
-        this.calcGridCollision(2, start, finish);
-        this.calcGridCollision(4, start, finish);
+        this.updateGridLabelsVisibility(2, start, finish);
+        this.updateGridLabelsVisibility(4, start, finish);
     }
 
-    private calcGridCollision(step: number, start: number[], finish: number[]): void {
+    private updateGridLabelsVisibility(step: number, start: number[], finish: number[]): void {
         for (let i = 0; i < start.length; i += step) {
             const nextIndex = i + step / 2;
             if (nextIndex >= start.length) {
@@ -500,7 +478,7 @@ export class RangeSliderDOM {
         fromMax = RangeSliderUtil.toFixed(fromMax - handleWidthAsPercent / 100 * fromMax);
         fromMin = fromMin + (handleWidthAsPercent / 2);
 
-        if (configuration.type === "single") {
+        if (this.type === SliderType.single) {
             const shadowSingle = this.getElement(RangeSliderElement.shadowSingle);
             if (configuration.fromShadow && (isFromMin || isFromMax)) {
                 shadowSingle.style.display = "block";

@@ -1,18 +1,11 @@
-import {RangeSliderDOM, RangeSliderElement} from "./range-slider-dom";
+import {RangeSliderDOM} from "./range-slider-dom";
 import {RangeSliderUtil} from "./range-slider-util";
 import {IRangeSliderOptions} from "../interfaces/range-slider-options";
 import {RangeSliderEvent} from "./range-slider-event";
-import {CallbackType, EventType, SliderType, TargetType} from "../enums";
+import {CallbackType, EventType, RangeSliderElement, SliderType, TargetType} from "../enums";
 import {RangeSliderState} from "./range-slider-state";
 import {EventBus} from "./range-slider-event-bus";
-
-export interface IRangeSlider {
-    destroy(): void;
-
-    reset(): void;
-
-    update(option: Partial<IRangeSliderOptions<number | string>>): void;
-}
+import {IRangeSlider} from "../interfaces/range-slider";
 
 export class RangeSlider implements IRangeSlider {
     private static currentPluginCount = 0;
@@ -74,12 +67,10 @@ export class RangeSlider implements IRangeSlider {
 
         //Todo récupérer les data de l'input pour initialiser la config'
 
-        // check if base element is input
         if (inputElement.nodeName !== "INPUT") {
             throw Error("Base element should be <input>!");
         }
 
-        // merge configurations
         this.configuration = RangeSliderUtil.initializeConfiguration(options, inputElement.value);
 
         this.state = new RangeSliderState(this.configuration);
@@ -179,10 +170,6 @@ export class RangeSlider implements IRangeSlider {
         this.calc();
     }
 
-    /**
-     * Mouseup or touchend
-     * only for handlers
-     */
     private pointerUp(eventTarget: EventTarget): void {
         if (this.isActive) {
             this.isActive = false;
@@ -197,16 +184,11 @@ export class RangeSlider implements IRangeSlider {
         this.updateScene();
         this.restoreOriginalMinInterval();
 
-        // callbacks call
         if (this.domElement.contains(eventTarget as Element)) {
             this.callback(CallbackType.onFinish);
         }
     }
 
-    /**
-     * Mousedown or touchstart
-     * only for handlers
-     */
     private pointerDown(target: TargetType, x: number): void {
         if (target === TargetType.both) {
             this.setTempMinInterval();
@@ -347,7 +329,7 @@ export class RangeSlider implements IRangeSlider {
 
         switch (this.target) {
             case TargetType.base:
-                this.calcForBaseTarget();
+                this.setInitialValuesForHandles();
                 break;
             case TargetType.single:
                 if (this.configuration.fromFixed) {
@@ -389,17 +371,20 @@ export class RangeSlider implements IRangeSlider {
                 if (this.configuration.fromFixed || this.configuration.toFixed) {
                     break;
                 }
-                this.calcForBoth(RangeSliderUtil.toFixed(handleX + handleWidthAsPercent * 0.001));
+                this.updateFromAndToHandles(RangeSliderUtil.toFixed(handleX + handleWidthAsPercent * 0.001));
 
                 break;
 
             case TargetType.bothOne:
+                if (this.configuration.fromFixed || this.configuration.toFixed) {
+                    break;
+                }
                 this.calcForBothOneTarget(this.convertToRealPercent(handleX));
                 break;
         }
     }
 
-    private calcForBoth(handleX: number) {
+    private updateFromAndToHandles(handleX: number) {
         const gapLeft = RangeSliderUtil.toFixed(this.getPointerAsPercent() - this.convertToFakePercent(this.fromHandleAsPercent)),
             gapRight = RangeSliderUtil.toFixed(this.convertToFakePercent(this.toHandleAsPercent) - this.getPointerAsPercent());
 
@@ -424,7 +409,7 @@ export class RangeSlider implements IRangeSlider {
                 TargetType.to);
     }
 
-    private calcForBaseTarget() {
+    private setInitialValuesForHandles() {
         const w = (this.state.max - this.state.min) / 100,
             f = (this.getFromValue() - this.state.min) / w,
             t = (this.getToValue() - this.state.min) / w;
@@ -437,10 +422,6 @@ export class RangeSlider implements IRangeSlider {
     }
 
     private calcForBothOneTarget(realX: number) {
-        if (this.configuration.fromFixed || this.configuration.toFixed) {
-            return;
-        }
-
         const full = this.toHandleAsPercent - this.fromHandleAsPercent,
             half = full / 2;
 
@@ -627,7 +608,7 @@ export class RangeSlider implements IRangeSlider {
                 this.domElement.getElement(RangeSliderElement.spanSingle).style.left = singleLeft.toString(10) + "%";
             }
 
-            this.writeToInput();
+            this.updateDatasetInputElement();
 
             if ((this.previousResultFrom !== from || this.previousResultTo !== to) && !this.isStart) {
                 RangeSlider.trigger("input", this.domElement.input);
@@ -750,7 +731,7 @@ export class RangeSlider implements IRangeSlider {
     /**
      * Write values to input element
      */
-    private writeToInput(): void {
+    private updateDatasetInputElement(): void {
         const from = this.getFromValue(),
             input = this.domElement.input;
         if (this.configuration.type === SliderType.single) {
@@ -790,7 +771,7 @@ export class RangeSlider implements IRangeSlider {
     }
 
     private callback(callbackType: CallbackType) {
-        this.writeToInput();
+        this.updateDatasetInputElement();
         if (!this.configuration[callbackType] || typeof this.configuration[callbackType] !== "function") {
             return;
         }
@@ -883,7 +864,6 @@ export class RangeSlider implements IRangeSlider {
 
         this.isUpdate = true;
 
-        // Todo changer pour updateScene ? => éviter d'avoir à garder from courant et to courant dans configuration
         this.configuration.from = this.getFromValue();
         if (this.configuration.type === SliderType.double) {
             this.configuration.to = this.getToValue();
