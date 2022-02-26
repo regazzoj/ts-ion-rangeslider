@@ -15,7 +15,7 @@ export class RangeSliderDOM {
     }
 
     private readonly _input: HTMLInputElement;
-    private readonly _container: Element; // AKA slider
+    private readonly _container: Element;
     private readonly eventBus: EventBus;
     private _isPointerDragging = false;
 
@@ -545,7 +545,6 @@ export class RangeSliderDOM {
 
     private pointerDown(event: MouseEvent | TouchEvent) {
         const target = this.getTargetFromElement(event.target as Element);
-
         event.stopPropagation();
         if (RangeSliderDOM.isRightClick(event)) {
             return;
@@ -565,6 +564,7 @@ export class RangeSliderDOM {
         if (!this._isPointerDragging) {
             return;
         }
+
         this._isPointerDragging = false;
         this.removeDraggingEventListeners();
 
