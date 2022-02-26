@@ -40,8 +40,9 @@ export class RangeSliderUtil {
         dragInterval: false
     };
 
-    public static initializeConfiguration(configuration: Partial<IRangeSliderOptions<number | string>>, inputValues?: string): IRangeSliderOptions<number> {
-        const configurationOutput = RangeSliderUtil.mergeConfigurations(RangeSliderUtil.defaultConfig, configuration);
+    public static initializeConfiguration(configuration: Partial<IRangeSliderOptions<number | string>>, input?: HTMLInputElement): IRangeSliderOptions<number> {
+        const configurationOutput = RangeSliderUtil.mergeConfigurations(RangeSliderUtil.defaultConfig, RangeSliderUtil.convertToConfiguration(configuration, input.dataset));
+        const inputValues = input.value;
         if (inputValues !== undefined && inputValues !== "") {
             const givenValues = inputValues.split(configuration.inputValuesSeparator || ";");
 
@@ -188,5 +189,13 @@ export class RangeSliderUtil {
         } else {
             return givenValues[0];
         }
+    }
+
+    private static convertToConfiguration(configuration: Partial<IRangeSliderOptions<number | string>>, data: DOMStringMap): Partial<IRangeSliderOptions<number | string>> {
+        const dataValues:Partial<IRangeSliderOptions<number | string>> = {};
+        for (const dataKey in data) {
+            dataValues[dataKey] = data[dataKey];
+        }
+        return { ...configuration, ...dataValues};
     }
 }

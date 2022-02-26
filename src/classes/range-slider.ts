@@ -68,7 +68,7 @@ export class RangeSlider implements IRangeSlider {
             throw Error(`Only <input> element is accepted as "inputElement" argument!`);
         }
 
-        this.configuration = RangeSliderUtil.initializeConfiguration(options, inputElement.value);
+        this.configuration = RangeSliderUtil.initializeConfiguration(options, inputElement);
 
         this.currentMinInterval = this.configuration.minInterval;
 
@@ -257,7 +257,7 @@ export class RangeSlider implements IRangeSlider {
     }
 
     private restorePreviousMinInterval(): void {
-        if (this.previousMinInterval) {
+        if (this.previousMinInterval != undefined) {
             this.currentMinInterval = this.previousMinInterval;
             this.previousMinInterval = undefined;
         }
