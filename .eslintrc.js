@@ -1,29 +1,34 @@
+/*eslint-env node*/
 module.exports = {
     root: true,
-    parser: '@typescript-eslint/parser',
+    parser: "@typescript-eslint/parser",
     parserOptions: {
         tsconfigRootDir: __dirname,
-        project: ['./tsconfig.eslint.json'],
+        project: ["./tsconfig.eslint.json"]
     },
     plugins: [
-        '@typescript-eslint'
+        "@typescript-eslint"
     ],
     extends: [
-        'eslint:recommended',
-        'plugin:@typescript-eslint/recommended',
-        'plugin:@typescript-eslint/recommended-requiring-type-checking'
+        "eslint:recommended",
+        "plugin:@typescript-eslint/recommended",
+        "plugin:@typescript-eslint/recommended-requiring-type-checking"
     ],
     rules: {
         "comma-dangle": "off",
         "no-console": "error",
         "no-trailing-spaces": "error",
         "quotes": "off",
+        "semi": "off",
         "@typescript-eslint/comma-dangle": "error",
         "@typescript-eslint/member-delimiter-style": "error",
         "@typescript-eslint/naming-convention": "error",
         "@typescript-eslint/no-extra-non-null-assertion": "error",
         "@typescript-eslint/no-confusing-non-null-assertion": "error",
         "@typescript-eslint/prefer-nullish-coalescing": "error",
-        "@typescript-eslint/quotes": ["error", "double", {"allowTemplateLiterals": true}]
+        "@typescript-eslint/quotes": ["error", "double", {"allowTemplateLiterals": true}],
+        "@typescript-eslint/semi": ["error", "never", {
+            "beforeStatementContinuationChars": "never"
+        }]
     }
-};
+}

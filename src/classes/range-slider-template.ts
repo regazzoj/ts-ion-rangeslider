@@ -1,7 +1,7 @@
-import {SkinType} from "../enums";
+import {SkinType} from "../enums"
 
 export class RangeSliderTemplate {
-    static readonly containerHtml = (skin: SkinType, count: number, extraClasses: string): string => `<span class="irs irs--${skin} js-irs-${count}${extraClasses.length>0?` ${extraClasses}`:""}"></span>`;
+    static readonly containerHtml = (skin: SkinType, count: number, extraClasses: string): string => `<span class="irs irs--${skin} js-irs-${count}${extraClasses.length>0?` ${extraClasses}`:""}"></span>`
 
     static readonly baseHtml =
         `<span class="irs">
@@ -12,7 +12,7 @@ export class RangeSliderTemplate {
             <span class="irs-to">0</span>
             <span class="irs-single">0</span>
         </span>
-        <span class="irs-grid"></span>`;
+        <span class="irs-grid"></span>`
 
     static readonly singleHtml =
         `<span class="irs-bar irs-bar--single"></span>
@@ -21,7 +21,7 @@ export class RangeSliderTemplate {
             <i></i>
             <i></i>
             <i></i>
-        </span>`;
+        </span>`
 
     static readonly doubleHtml =
         `<span class="irs-bar"></span>
@@ -36,7 +36,7 @@ export class RangeSliderTemplate {
             <i></i>
             <i></i>
             <i></i>
-        </span>`;
+        </span>`
 
-    static readonly disableHtml = `<span class="irs-disable-mask"></span>`;
+    static readonly disableHtml = `<span class="irs-disable-mask"></span>`
 }

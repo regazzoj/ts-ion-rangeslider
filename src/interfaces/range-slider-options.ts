@@ -1,5 +1,5 @@
-import {SkinType, SliderType} from "../enums";
-import {IRangeSliderEvent} from "./range-slider-event";
+import {SkinType, SliderType} from "../enums"
+import {IRangeSliderEvent} from "./range-slider-event"
 
 export interface IBaseRangeSliderOptions {
     // Set slider theme [Default: flat]
