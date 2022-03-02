@@ -51,10 +51,78 @@ describe("RangeSliderUtil", () => {
         expect(RangeSliderUtil.initializeConfiguration({})).toStrictEqual(defaultConfiguration)
     })
 
-    const options = {from:-50,to:-100, min:-100, max: -50, type: SliderType.double}
-    const expectedConfiguration = { ...defaultConfiguration, ...options, from: -100}
-
     test("configuration with from bigger than to", () => {
+        const options = {from: -50, to: -100, min: -100, max: -50, type: SliderType.double}
+        const optionsAfterCheck = {from: -100, to: -100, min: -100, max: -50, type: SliderType.double}
+        const expectedConfiguration = {...defaultConfiguration, ...optionsAfterCheck}
+        expect(RangeSliderUtil.initializeConfiguration(options)).toStrictEqual(expectedConfiguration)
+    })
+
+    test("configuration with string values", () => {
+        const options = {
+            from: "-50",
+            to: "-100",
+            min: "-100",
+            max: "-50",
+            step: "2",
+            fromMin: "-100",
+            fromMax: "-80",
+            toMin: "-80",
+            toMax: "-50",
+            type: SliderType.double
+        }
+        const optionsAfterConvert = {
+            from: -100,
+            to: -80,
+            min: -100,
+            max: -50,
+            step: 2,
+            fromMin: -100,
+            fromMax: -80,
+            toMin: -80,
+            toMax: -50,
+            type: SliderType.double
+        }
+        const expectedConfiguration = {...defaultConfiguration, ...optionsAfterConvert}
+        expect(RangeSliderUtil.initializeConfiguration(options)).toStrictEqual(expectedConfiguration)
+    })
+
+    test("configuration with given values", () => {
+        const options = {
+            from: -2,
+            to: 2,
+            grid: true,
+            gridMargin: true,
+            gridNum: 4,
+            gridSnap: false,
+            hideFromTo: false,
+            hideMinMax: false,
+            fromShadow: true,
+            toShadow: false,
+            fromMin: 1,
+            fromMax:2,
+            toMin: 1,
+            toMax: 3,
+            type: SliderType.double,
+            values: ["a", "b", "c", "d"],
+            valuesSeparator: ","
+        }
+        const optionsAfterConvert = {
+            from: 1,
+            to: 2,
+            fromMin: 1,
+            fromMax:2,
+            fromShadow: true,
+            gridSnap: true,
+            toMin: 1,
+            toMax: 3,
+            min: 0,
+            max: 3,
+            type: SliderType.double,
+            values: ["a", "b", "c", "d"],
+            valuesSeparator: ","
+        }
+        const expectedConfiguration = {...defaultConfiguration, ...optionsAfterConvert}
         expect(RangeSliderUtil.initializeConfiguration(options)).toStrictEqual(expectedConfiguration)
     })
 })
