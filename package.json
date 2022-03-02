@@ -1,5 +1,5 @@
 {
-  "author": "Regazzoj",
+  "author": "Regazzoj <jeanbaptiste.regazzoni@protonmail.com>",
   "bugs": {
     "url": "https://github.com/regazzoj/ts-rangeslider/issues"
   },
@@ -11,7 +11,7 @@
     "type": "git",
     "url": "git+https://github.com/regazzoj/ts-rangeslider.git"
   },
-  "version": "0.1",
+  "version": "1.0.0",
   "keywords": [
     "typescript",
     "vanilla",
@@ -38,7 +38,7 @@
   "style": "dist/styles/ionRangeSlider.css",
   "scripts": {
     "build": "yarn typegen && yarn rollup -c",
-    "ci": "yarn eslint && yarn build && yarn test && wait",
+    "ci": "yarn eslint && yarn build && yarn test",
     "eslint": "eslint 'src/**/*.ts'",
     "prepublishOnly": "yarn ci",
     "test": "jest",
@@ -58,6 +58,6 @@
     "rollup-plugin-esbuild": "^4.8.2",
     "rollup-plugin-postcss": "^4.0.2",
     "ts-jest": "^27.1.2",
-    "typescript": "^4.4.4"
+    "typescript": "<4.6"
   }
 }
