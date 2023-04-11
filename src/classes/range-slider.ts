@@ -583,6 +583,8 @@ export class RangeSlider implements IRangeSlider {
     }
 
     private drawLabels(): void {
+        // eslint-disable-next-line no-console
+        console.log("draw labels")
         if (!this.configuration) {
             return
         }
@@ -629,11 +631,15 @@ export class RangeSlider implements IRangeSlider {
             let max = Math.max(singleLeft + singleFake, toLeft + toFake)
 
             if (fromLeft + fromFake >= toLeft) {
+                // eslint-disable-next-line no-console
+                console.log("if fromLeft+fromFake >= toLeft")
                 this.domElement.getElement(RangeSliderElement.from).style.visibility = "hidden"
                 this.domElement.getElement(RangeSliderElement.to).style.visibility = "hidden"
                 this.domElement.getElement(RangeSliderElement.spanSingle).style.visibility = "visible"
 
                 if (from === to) {
+                    // eslint-disable-next-line no-console
+                    console.log("if from === to", this.target)
                     if (this.target === TargetType.from) {
                         this.domElement.getElement(RangeSliderElement.from).style.visibility = "visible"
                     } else if (this.target === TargetType.to) {
@@ -644,23 +650,31 @@ export class RangeSlider implements IRangeSlider {
                     this.domElement.getElement(RangeSliderElement.spanSingle).style.visibility = "hidden"
                     max = toLeft
                 } else {
+                    // eslint-disable-next-line no-console
+                    console.log("else from === to")
                     this.domElement.getElement(RangeSliderElement.from).style.visibility = "hidden"
                     this.domElement.getElement(RangeSliderElement.to).style.visibility = "hidden"
                     this.domElement.getElement(RangeSliderElement.spanSingle).style.visibility = "visible"
                     max = Math.max(singleLeft, toLeft)
                 }
             } else {
+                // eslint-disable-next-line no-console
+                console.log("if fromLeft+fromFake >= toLeft")
                 this.domElement.getElement(RangeSliderElement.from).style.visibility = "visible"
                 this.domElement.getElement(RangeSliderElement.to).style.visibility = "visible"
                 this.domElement.getElement(RangeSliderElement.spanSingle).style.visibility = "hidden"
             }
 
+            // eslint-disable-next-line no-console
+            console.log(min < minLabelAsPercents + 1)
             if (min < minLabelAsPercents + 1) {
                 this.domElement.getElement(RangeSliderElement.min).style.visibility = "hidden"
             } else {
                 this.domElement.getElement(RangeSliderElement.min).style.visibility = "visible"
             }
 
+            // eslint-disable-next-line no-console
+            console.log(max > 100 - maxLabelAsPercents - 1)
             if (max > 100 - maxLabelAsPercents - 1) {
                 this.domElement.getElement(RangeSliderElement.max).style.visibility = "hidden"
             } else {
