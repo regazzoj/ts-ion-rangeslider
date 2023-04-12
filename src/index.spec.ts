@@ -1,4 +1,4 @@
-import { TsRangeSlider, SliderType, SkinType} from "./index"
+import { TsRangeSlider, SliderType, SkinType } from "./index"
 
 describe("Exports", () =>
 {
@@ -52,7 +52,7 @@ describe("TsRangeSlider creation", () => {
     sliderInputElement.destroy()
 
     for (const countKey in count) {
-      expect(count[countKey]).toBe(0)
+      expect(count[countKey as keyof typeof count]).toBe(0)
     }
   })
 })

@@ -1,5 +1,5 @@
-import {SkinType, SliderType} from "../enums"
-import {IRangeSliderEvent} from "./range-slider-event"
+import { SkinType, SliderType } from "../enums"
+import { IRangeSliderEvent } from "./range-slider-event"
 
 export interface IBaseRangeSliderOptions {
     // Set slider theme [Default: flat]
@@ -93,4 +93,16 @@ export interface IRangeSliderOptions<T> extends IBaseRangeSliderOptions {
     toMax: T;
     // Number of grid units [Default: 4]
     gridNum: T;
+}
+
+export function getRangeSliderOptionsFromData(dataMap: DOMStringMap): Partial<IRangeSliderOptions<string>> {
+  const options = new Map<string, string>()
+  for (const key in dataMap) {
+    const value = dataMap[key]
+    if (value === undefined) {
+      continue
+    }
+    options.set(key, value)
+  }
+  return Object.fromEntries(options)
 }

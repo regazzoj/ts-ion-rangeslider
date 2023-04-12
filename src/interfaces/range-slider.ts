@@ -1,4 +1,4 @@
-import {IRangeSliderOptions} from "./range-slider-options"
+import { IRangeSliderOptions } from "./range-slider-options"
 
 export interface IRangeSlider {
     destroy(): void;

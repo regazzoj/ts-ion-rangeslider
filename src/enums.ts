@@ -7,7 +7,7 @@ export enum EventType {
 }
 
 export enum RangeSliderElement {
-    //common
+    // common
     bar = ".irs-bar",
     from = ".irs-from",
     grid = ".irs-grid",
@@ -17,15 +17,15 @@ export enum RangeSliderElement {
     rangeSlider = ".irs",
     spanSingle = ".irs-single",
     to = ".irs-to",
-    //single
+    // single
     shadowSingle = ".shadow-single",
     singleHandle = ".irs-handle.single",
-    //double
+    // double
     shadowFrom = ".shadow-from",
     shadowTo = ".shadow-to",
     spanFrom = ".irs-handle.from",
     spanTo = ".irs-handle.to",
-    //mask
+    // mask
     mask = ".irs-disable-mask"
 }
 

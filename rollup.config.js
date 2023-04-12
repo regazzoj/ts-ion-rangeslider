@@ -24,7 +24,7 @@ esmConfig.output = Object.assign({}, commonConfig.output, {
 })
 esmConfig.plugins = [
     ...esmConfig.plugins,
-    esbuild({bundle: true})
+    esbuild()
 ]
 
 // ESM prod config
@@ -35,7 +35,7 @@ esmProdConfig.output = Object.assign({}, esmConfig.output, {
 })
 esmProdConfig.plugins = [
     ...esmConfig.plugins,
-    esbuild({bundle: true, minify: true})
+    esbuild({minify: true})
 ]
 
 // UMD config
@@ -46,7 +46,7 @@ umdConfig.output = Object.assign({}, commonConfig.output, {
 })
 umdConfig.plugins = [
     ...commonConfig.plugins,
-    esbuild({bundle: true})
+    esbuild()
 
 ]
 
@@ -58,7 +58,7 @@ umdProdConfig.output = Object.assign({}, umdConfig.output, {
 })
 umdProdConfig.plugins = [
     ...umdConfig.plugins,
-    esbuild({bundle: true, minify: true})
+    esbuild({minify: true})
 ]
 
 export default [
