@@ -1,6 +1,9 @@
-import dts from "rollup-plugin-dts"
-import esbuild from "rollup-plugin-esbuild"
+import _dts from "rollup-plugin-dts"
+import _esbuild from "rollup-plugin-esbuild"
 import postcss from "rollup-plugin-postcss"
+
+const dts = _dts.default ?? _dts;
+const esbuild = _esbuild.default ?? _esbuild;
 
 import { style } from "./package.json"
 
