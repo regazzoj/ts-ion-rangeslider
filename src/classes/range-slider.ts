@@ -81,6 +81,9 @@ export class RangeSlider implements IRangeSlider {
 
     this.currentMinInterval = this.configuration.minInterval
 
+    // eslint-disable-next-line no-console
+    console.log(this.configuration, this.currentMinInterval)
+
     this.state = new RangeSliderState(this.configuration)
 
     this.domElement = new RangeSliderDOM(inputElement, this.configuration, this.pluginCount, this.state, this.eventBus)
@@ -152,10 +155,7 @@ export class RangeSlider implements IRangeSlider {
         this.domElement.getElement(RangeSliderElement.spanSingle) :
         this.domElement.getElement(RangeSliderElement.from)
 
-      let x = RangeSlider.getLeftOffset(handle)
-      x += handle.offsetWidth / 2 - 1
-
-      this.updateXPosition(TargetType.single, x)
+      this.updateXPosition(TargetType.single, RangeSlider.getLeftOffset(handle) + handle.offsetWidth / 2 - 1)
     }
   }
 
@@ -286,25 +286,8 @@ export class RangeSlider implements IRangeSlider {
       return
     }
 
-    let handleX = this.getHandleX()
-
-    if (this.target === TargetType.both) {
-      this.gapBetweenPointerAndHandle = 0
-      handleX = this.getHandleX()
-    }
-
     const handleWidthAsPercent = this.domElement.getHandleWidthAsPercent()
-
-    if (this.target === TargetType.click) {
-      this.gapBetweenPointerAndHandle = (handleWidthAsPercent / 2)
-      handleX = this.getHandleX()
-
-      if (this.configuration.dragInterval) {
-        this.target = TargetType.bothOne
-      } else {
-        this.target = this.chooseHandle(handleX)
-      }
-    }
+    const handleX = this.computeHandleX(handleWidthAsPercent)
 
     switch (this.target) {
       case TargetType.base:
@@ -363,6 +346,25 @@ export class RangeSlider implements IRangeSlider {
     }
   }
 
+  private computeHandleX(handleWidthAsPercent: number) {
+    if (this.target === TargetType.both) {
+      this.gapBetweenPointerAndHandle = 0
+      return this.getHandleX()
+    }
+
+    if (this.target === TargetType.click) {
+      this.gapBetweenPointerAndHandle = (handleWidthAsPercent / 2)
+      if (this.configuration.dragInterval) {
+
+        this.target = TargetType.bothOne
+      } else {
+        this.target = this.chooseHandle(this.getHandleX())
+      }
+      return this.getHandleX()
+    }
+    return this.getHandleX()
+  }
+
   private updateFromAndToHandles(handleX: number) {
     this.fromHandleAsPercent =
             this.checkMinInterval(
@@ -373,7 +375,6 @@ export class RangeSlider implements IRangeSlider {
                 this.configuration.fromMax),
               this.toHandleAsPercent,
               TargetType.from)
-
     this.toHandleAsPercent =
             this.checkMinInterval(
               this.checkDiapason(
@@ -383,6 +384,9 @@ export class RangeSlider implements IRangeSlider {
                 this.configuration.toMax),
               this.fromHandleAsPercent,
               TargetType.to)
+
+    // eslint-disable-next-line no-console
+    console.log("updateFromAndToHandles", this.currentMinInterval, this.fromHandleAsPercent)
   }
 
   private setInitialValuesForHandles() {
@@ -400,23 +404,25 @@ export class RangeSlider implements IRangeSlider {
   private updateHandlesForBothOneTarget(realX: number) {
     const full = this.toHandleAsPercent - this.fromHandleAsPercent,
       half = full / 2
-
-    let newFrom = realX - half,
-      newTo = realX + half
-
-    if (newFrom < 0) {
-      newFrom = 0
-      newTo = newFrom + full
-    }
-
-    if (newTo > 100) {
-      newTo = 100
-      newFrom = newTo - full
-    }
+    const { newFrom, newTo } = this.computeNewFromTo(realX, half, full)
 
     this.fromHandleAsPercent = this.checkDiapason(this.state.getPercentAccordingToStep(newFrom), this.configuration.fromMin, this.configuration.fromMax)
 
     this.toHandleAsPercent = this.checkDiapason(this.state.getPercentAccordingToStep(newTo), this.configuration.toMin, this.configuration.toMax)
+  }
+
+  private computeNewFromTo(realX: number, half: number, full: number) {
+    const newFrom = realX - half,
+      newTo = realX + half
+
+    if (newFrom < 0) {
+      return { newFrom: 0, newTo: full }
+    }
+
+    if (newTo > 100) {
+      return { newFrom: 100 - full, newTo: 100 }
+    }
+    return { newFrom, newTo }
   }
 
   private getCurrentPosition(position: number): number {
@@ -450,12 +456,12 @@ export class RangeSlider implements IRangeSlider {
 
   private getHandleX(): number {
     const max = 100 - this.domElement.getHandleWidthAsPercent()
-    let x = RangeSliderUtil.toFixed(this.getPointerAsPercent() - this.gapBetweenPointerAndHandle)
+    const x = RangeSliderUtil.toFixed(this.getPointerAsPercent() - this.gapBetweenPointerAndHandle)
 
     if (x < 0) {
-      x = 0
+      return 0
     } else if (x > max) {
-      x = max
+      return max
     }
 
     return x
@@ -596,8 +602,6 @@ export class RangeSlider implements IRangeSlider {
   }
 
   private drawLabels(): void {
-    // eslint-disable-next-line no-console
-    console.log("draw labels")
     if (!this.configuration) {
       return
     }
@@ -641,59 +645,51 @@ export class RangeSlider implements IRangeSlider {
         toLeft = this.domElement.constrainValue(RangeSliderUtil.toFixed(this.convertToFakePercent(this.toHandleAsPercent) + (handleWidthAsPercent / 2) - (toFake / 2)), toFake),
         singleLeft = this.domElement.constrainValue(RangeSliderUtil.toFixed((fromLeft + toLeft + toFake) / 2 - singleFake / 2), singleFake),
         min = Math.min(singleLeft, fromLeft)
-      let max = Math.max(singleLeft + singleFake, toLeft + toFake)
 
-      if (fromLeft + fromFake >= toLeft) {
-        // eslint-disable-next-line no-console
-        console.log("if fromLeft+fromFake >= toLeft")
-        this.domElement.getElement(RangeSliderElement.from).style.visibility = "hidden"
-        this.domElement.getElement(RangeSliderElement.to).style.visibility = "hidden"
-        this.domElement.getElement(RangeSliderElement.spanSingle).style.visibility = "visible"
-
-        if (from === to) {
-          // eslint-disable-next-line no-console
-          console.log("if from === to", this.target)
-          if (this.target === TargetType.from) {
-            this.domElement.getElement(RangeSliderElement.from).style.visibility = "visible"
-          } else if (this.target === TargetType.to) {
-            this.domElement.getElement(RangeSliderElement.to).style.visibility = "visible"
-          } else if (!this.target) {
-            this.domElement.getElement(RangeSliderElement.from).style.visibility = "visible"
-          }
-          this.domElement.getElement(RangeSliderElement.spanSingle).style.visibility = "hidden"
-          max = toLeft
-        } else {
-          // eslint-disable-next-line no-console
-          console.log("else from === to")
-          this.domElement.getElement(RangeSliderElement.from).style.visibility = "hidden"
-          this.domElement.getElement(RangeSliderElement.to).style.visibility = "hidden"
-          this.domElement.getElement(RangeSliderElement.spanSingle).style.visibility = "visible"
-          max = Math.max(singleLeft, toLeft)
-        }
-      } else {
-        // eslint-disable-next-line no-console
-        console.log("if fromLeft+fromFake >= toLeft")
-        this.domElement.getElement(RangeSliderElement.from).style.visibility = "visible"
-        this.domElement.getElement(RangeSliderElement.to).style.visibility = "visible"
-        this.domElement.getElement(RangeSliderElement.spanSingle).style.visibility = "hidden"
-      }
-
-      // eslint-disable-next-line no-console
-      console.log(min < minLabelAsPercents + 1)
+      const max = this.computeMax(fromLeft, fromFake, toLeft, toFake, from, to, singleLeft, singleFake)
       if (min < minLabelAsPercents + 1) {
         this.domElement.getElement(RangeSliderElement.min).style.visibility = "hidden"
       } else {
         this.domElement.getElement(RangeSliderElement.min).style.visibility = "visible"
       }
 
-      // eslint-disable-next-line no-console
-      console.log(max > 100 - maxLabelAsPercents - 1)
       if (max > 100 - maxLabelAsPercents - 1) {
         this.domElement.getElement(RangeSliderElement.max).style.visibility = "hidden"
       } else {
         this.domElement.getElement(RangeSliderElement.max).style.visibility = "visible"
       }
     }
+  }
+
+  private computeMax(fromLeft: number, fromFake: number, toLeft: number, toFake: number, from: number, to: number, singleLeft: number, singleFake: number) {
+    const max = Math.max(singleLeft + singleFake, toLeft + toFake)
+    if (fromLeft + fromFake >= toLeft) {
+      this.domElement.getElement(RangeSliderElement.from).style.visibility = "hidden"
+      this.domElement.getElement(RangeSliderElement.to).style.visibility = "hidden"
+      this.domElement.getElement(RangeSliderElement.spanSingle).style.visibility = "visible"
+
+      if (from === to) {
+        if (this.target === TargetType.from) {
+          this.domElement.getElement(RangeSliderElement.from).style.visibility = "visible"
+        } else if (this.target === TargetType.to) {
+          this.domElement.getElement(RangeSliderElement.to).style.visibility = "visible"
+        } else if (!this.target) {
+          this.domElement.getElement(RangeSliderElement.from).style.visibility = "visible"
+        }
+        this.domElement.getElement(RangeSliderElement.spanSingle).style.visibility = "hidden"
+        return toLeft
+      } else {
+        this.domElement.getElement(RangeSliderElement.from).style.visibility = "hidden"
+        this.domElement.getElement(RangeSliderElement.to).style.visibility = "hidden"
+        this.domElement.getElement(RangeSliderElement.spanSingle).style.visibility = "visible"
+        return Math.max(singleLeft, toLeft)
+      }
+    } else {
+      this.domElement.getElement(RangeSliderElement.from).style.visibility = "visible"
+      this.domElement.getElement(RangeSliderElement.to).style.visibility = "visible"
+      this.domElement.getElement(RangeSliderElement.spanSingle).style.visibility = "hidden"
+    }
+    return max
   }
 
   private updateDatasetInputElement(): void {
@@ -763,25 +759,29 @@ export class RangeSlider implements IRangeSlider {
   }
 
   private checkMinInterval(currentPercent: number, nextPercent: number, type: TargetType): number {
-    if (!this.currentMinInterval) {
+    if (this.currentMinInterval === undefined) {
       return currentPercent
     }
 
-    let current: number = this.state.convertToValue(currentPercent)
     const next = this.state.convertToValue(nextPercent)
+    const current = this.computeCurrentValueFromMinInterval(currentPercent, type, next)
+
+    return this.state.convertToPercent(current)
+  }
+
+  private computeCurrentValueFromMinInterval(currentPercent: number, type: TargetType, next: number) {
+    const current: number = this.state.convertToValue(currentPercent)
 
     if (type === TargetType.from) {
       if (next - current < this.currentMinInterval) {
-        current = next - this.currentMinInterval
+        return next - this.currentMinInterval
       }
     } else {
-
       if (current - next < this.currentMinInterval) {
-        current = next + this.currentMinInterval
+        return next + this.currentMinInterval
       }
     }
-
-    return this.state.convertToPercent(current)
+    return current
   }
 
   private checkMaxInterval(currentPercent: number, nextPercent: number, type: TargetType): number {
@@ -789,41 +789,46 @@ export class RangeSlider implements IRangeSlider {
       return currentPercent
     }
 
-    let current: number = this.state.convertToValue(currentPercent)
     const next = this.state.convertToValue(nextPercent)
-
-    if (type === TargetType.from) {
-
-      if (next - current > this.configuration.maxInterval) {
-        current = next - this.configuration.maxInterval
-      }
-    } else {
-
-      if (current - next > this.configuration.maxInterval) {
-        current = next + this.configuration.maxInterval
-      }
-    }
+    const current = this.computeCurrentValueFromMaxInterval(currentPercent, type, next)
 
     return this.state.convertToPercent(current)
   }
 
-  private checkDiapason(numberPercent: number, min: number, max: number) {
-    let num = this.state.convertToValue(numberPercent)
+  private computeCurrentValueFromMaxInterval(currentPercent: number, type: TargetType, next: number) {
+    const current: number = this.state.convertToValue(currentPercent)
 
-    if (typeof min !== "number") {
+    if (type === TargetType.from) {
+
+      if (next - current > this.configuration.maxInterval) {
+        return next - this.configuration.maxInterval
+      }
+    } else {
+
+      if (current - next > this.configuration.maxInterval) {
+        return next + this.configuration.maxInterval
+      }
+    }
+    return current
+  }
+
+  private checkDiapason(numberPercent: number, min: number, max: number) {
+    const num = this.state.convertToValue(numberPercent)
+
+    if (!min || typeof min !== "number") {
       min = this.state.min
     }
 
-    if (typeof max !== "number") {
+    if (!max || typeof max !== "number") {
       max = this.state.max
     }
 
     if (num < min) {
-      num = min
+      return this.state.convertToPercent(min)
     }
 
     if (num > max) {
-      num = max
+      return this.state.convertToPercent(max)
     }
 
     return this.state.convertToPercent(num)

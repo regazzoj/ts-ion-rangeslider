@@ -108,7 +108,7 @@ export class RangeSliderDOM {
 
     const noLabelCount = RangeSliderDOM.getNoLabelCount(gridLabelsCount)
 
-    const percentBetweenTwoLabels = RangeSliderUtil.toFixed(100 / (gridLabelsCount - 1))
+    const percentBetweenTwoLabels = RangeSliderUtil.toFixed(100 / (gridLabelsCount - 1), 4)
 
     for (let i = 0; i < gridLabelsCount; i++) {
       const spaceForCurrentLabel = RangeSliderUtil.toFixed(percentBetweenTwoLabels * i)
@@ -132,15 +132,9 @@ export class RangeSliderDOM {
       }
       html.push(`<span class="irs-grid-pol" style="left: ${spaceForCurrentLabel}%"></span>`)
 
-      let result: number | string = state.convertToValue(spaceForCurrentLabel)
+      const result: number = state.convertToValue(spaceForCurrentLabel)
 
-      if (state.hasCustomValues()) {
-        result = state.getValuePrettified(result)
-      } else {
-        result = state.prettify(result)
-      }
-
-      html.push(`<span class="irs-grid-text js-grid-text-${i}" style="left: ${spaceForCurrentLabel}%">${result}</span>`)
+      html.push(`<span class="irs-grid-text js-grid-text-${i}" style="left: ${spaceForCurrentLabel}%">${state.getValue(result, true)}</span>`)
     }
 
     this.container.classList.toggle("irs-with-grid")
@@ -180,27 +174,11 @@ export class RangeSliderDOM {
       percentBetweenTwoLabels = RangeSliderUtil.toFixed(100 / (gridLabelsCount - 1))
 
     for (let i = 0; i < gridLabelsCount; i++) {
-      let marginLeft
-
       const label = this.getLabel(i)
-
       const labelWidth = label.offsetWidth
       const labelWidthPercent = this.getPercent(labelWidth)
 
-      if (i === 0 && this.forceEdges && start[i] < -halfWidthHandleAsPercent) {
-        start.push(-halfWidthHandleAsPercent)
-        finish.push(RangeSliderUtil.toFixed(start[i] + labelWidthPercent))
-        marginLeft = halfWidthHandleAsPercent
-      } else if (i === gridLabelsCount - 1 && this.forceEdges && finish[i] > 100 + halfWidthHandleAsPercent) {
-        finish.push(100 + halfWidthHandleAsPercent)
-        start.push(RangeSliderUtil.toFixed(finish[i] - labelWidthPercent))
-        marginLeft = RangeSliderUtil.toFixed(labelWidthPercent - halfWidthHandleAsPercent)
-      } else {
-        const halfLabelWidthPercent = RangeSliderUtil.toFixed(labelWidthPercent / 2)
-        start.push(RangeSliderUtil.toFixed((percentBetweenTwoLabels * i) - halfLabelWidthPercent))
-        finish.push(RangeSliderUtil.toFixed(start[i] + labelWidthPercent))
-        marginLeft = halfLabelWidthPercent
-      }
+      const marginLeft = this.getMarginLeft(i, start, halfWidthHandleAsPercent, finish, labelWidthPercent, gridLabelsCount, percentBetweenTwoLabels)
       if (marginLeft !== Number.POSITIVE_INFINITY) {
         label.style.marginLeft = `${-marginLeft}%`
       }
@@ -208,6 +186,23 @@ export class RangeSliderDOM {
 
     this.updateGridLabelsVisibility(2, start, finish)
     this.updateGridLabelsVisibility(4, start, finish)
+  }
+
+  private getMarginLeft(i: number, start: number[], halfWidthHandleAsPercent: number, finish: number[], labelWidthPercent: number, gridLabelsCount: number, percentBetweenTwoLabels: number) {
+    if (i === 0 && this.forceEdges && start[i] < -halfWidthHandleAsPercent) {
+      start.push(-halfWidthHandleAsPercent)
+      finish.push(RangeSliderUtil.toFixed(start[i] + labelWidthPercent))
+      return halfWidthHandleAsPercent
+    } else if (i === gridLabelsCount - 1 && this.forceEdges && finish[i] > 100 + halfWidthHandleAsPercent) {
+      finish.push(100 + halfWidthHandleAsPercent)
+      start.push(RangeSliderUtil.toFixed(finish[i] - labelWidthPercent))
+      return RangeSliderUtil.toFixed(labelWidthPercent - halfWidthHandleAsPercent)
+    } else {
+      const halfLabelWidthPercent = RangeSliderUtil.toFixed(labelWidthPercent / 2)
+      start.push(RangeSliderUtil.toFixed((percentBetweenTwoLabels * i) - halfLabelWidthPercent))
+      finish.push(RangeSliderUtil.toFixed(start[i] + labelWidthPercent))
+      return halfLabelWidthPercent
+    }
   }
 
   private updateGridLabelsVisibility(step: number, start: number[], finish: number[]): void {
@@ -469,14 +464,8 @@ export class RangeSliderDOM {
       isToMax = typeof configuration.toMax === "number" && !isNaN(configuration.toMax),
       handleWidthAsPercent = this.getHandleWidthAsPercent()
 
-    let fromMin: number,
-      fromMax: number
-
-    fromMin = state.convertToPercent(isFromMin ? configuration.fromMin : configuration.min)
-    fromMax = state.convertToPercent(isFromMax ? configuration.fromMax : configuration.max) - fromMin
-    fromMin = RangeSliderUtil.toFixed(fromMin - handleWidthAsPercent / 100 * fromMin)
-    fromMax = RangeSliderUtil.toFixed(fromMax - handleWidthAsPercent / 100 * fromMax)
-    fromMin = fromMin + (handleWidthAsPercent / 2)
+    const fromMin = this.computeShadow(state, handleWidthAsPercent, isFromMin ? configuration.fromMin : configuration.min) + (handleWidthAsPercent / 2)
+    const fromMax = this.computeShadow(state, handleWidthAsPercent, isFromMax ? configuration.fromMax : configuration.max, isFromMin ? configuration.fromMin : configuration.min)
 
     if (this.type === SliderType.single) {
       const shadowSingle = this.getElement(RangeSliderElement.shadowSingle)
@@ -501,14 +490,8 @@ export class RangeSliderDOM {
       const shadowTo = this.getElement(RangeSliderElement.shadowTo)
 
       if (configuration.toShadow && (isToMin || isToMax)) {
-        let toMin: number,
-          toMax: number
-
-        toMin = state.convertToPercent(isToMin ? configuration.toMin : configuration.min)
-        toMax = state.convertToPercent(isToMax ? configuration.toMax : configuration.max) - toMin
-        toMin = RangeSliderUtil.toFixed(toMin - handleWidthAsPercent / 100 * toMin)
-        toMax = RangeSliderUtil.toFixed(toMax - handleWidthAsPercent / 100 * toMax)
-        toMin = toMin + (handleWidthAsPercent / 2)
+        const toMin = this.computeShadow(state, handleWidthAsPercent, isToMin ? configuration.toMin : configuration.min) + (handleWidthAsPercent / 2)
+        const toMax = this.computeShadow(state, handleWidthAsPercent, isToMax ? configuration.toMax : configuration.max, isToMin ? configuration.toMin : configuration.min)
 
         shadowTo.style.display = "block"
         shadowTo.style.left = toMin.toString(10) + "%"
@@ -659,5 +642,10 @@ export class RangeSliderDOM {
       }
     }
     throw Error(`Can't find target from element class "${element.className}"`)
+  }
+
+  private computeShadow(state: RangeSliderState, handleWidthAsPercent: number, number: number, min = 0) {
+    const percent = state.convertToPercent(number) - min
+    return RangeSliderUtil.toFixed(percent - handleWidthAsPercent / 100 * percent)
   }
 }

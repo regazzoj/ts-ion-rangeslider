@@ -1,9 +1,9 @@
-import { TsRangeSlider, SliderType, SkinType } from "./index"
+import { SliderType, SkinType, RangeSlider } from "./index"
 
 describe("Exports", () =>
 {
-  test("TsRangeSlider is exported", () => {
-    expect(TsRangeSlider).toBeInstanceOf(Object)
+  test("RangeSlider is exported", () => {
+    expect(RangeSlider).toBeInstanceOf(Object)
   })
 
   test("SliderType is exported", () => {
@@ -22,13 +22,13 @@ const count = {
   onUpdate: 2
 }
 
-describe("TsRangeSlider creation", () => {
-  test("TsRangeSlider", () => {
+describe("RangeSlider creation", () => {
+  test("RangeSlider", () => {
     const div = document.createElement("div")
     const input = document.createElement("input")
     div.append(input)
 
-    const sliderInputElement = new TsRangeSlider(input, {
+    const sliderInputElement = new RangeSlider(input, {
       skin: SkinType.round,
       grid: true,
       gridMargin: true,

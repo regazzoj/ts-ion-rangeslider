@@ -147,15 +147,17 @@ export class RangeSliderState {
       return `${this.decorate(from)}${this.valuesSeparator}${this.decorate(to)}`
     }
 
-    let fromCustom: number | string = from, toCustom: number | string = to
-    if (this.hasCustomValues()) {
-      fromCustom = this.getValuePrettified(from)
-      toCustom = this.getValuePrettified(to)
-    }
+    const fromCustom = this.getValue(from)
+    const toCustom = this.getValue(to)
     if (to === this.max) {
       return this._decorateStringWithMaxPostfix(`${fromCustom}${this.valuesSeparator}${toCustom}`)
     }
     return this._decorateString(`${fromCustom}${this.valuesSeparator}${toCustom}`)
+  }
+
+  public getValue(value: number, prettify = false) {
+    return this.hasCustomValues() ? this.getValuePrettified(value) :
+      prettify ? this.prettify(value) : value
   }
 
   public decorate(value: number): string {
@@ -209,16 +211,15 @@ export class RangeSliderState {
       return
     }
     values.forEach((currentValue, index) => {
-      let prettyValue: number | string = parseFloat(typeof currentValue === "string" ? currentValue : currentValue.toString(10))
+      const value: number | string = parseFloat(typeof currentValue === "string" ? currentValue : currentValue.toString(10))
 
-      if (!isNaN(prettyValue)) {
-        values[index] = prettyValue
-        prettyValue = this.prettify(prettyValue)
-      } else {
-        prettyValue = values[index]
-      }
       this.customValues.push(currentValue)
-      this.prettifiedValues.push(prettyValue)
+      if (!isNaN(value)) {
+        values[index] = value
+        this.prettifiedValues.push(this.prettify(value))
+      } else {
+        this.prettifiedValues.push(values[index])
+      }
     })
   }
 }
