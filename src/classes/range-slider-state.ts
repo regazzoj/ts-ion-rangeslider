@@ -45,11 +45,9 @@ export class RangeSliderState {
     this._max = configuration.max
     this._step = configuration.step
     if (configuration.values.length > 0) {
-      this.isSnapEnabled = true
       this.prettifyValues(configuration.values)
-    } else {
-      this.isSnapEnabled = configuration.gridSnap
     }
+    this.isSnapEnabled = configuration.gridSnap
 
     this.doubleLabelsDecorated = configuration.type === SliderType.double ? configuration.decorateBoth : false
     this.valuesSeparator = configuration.valuesSeparator

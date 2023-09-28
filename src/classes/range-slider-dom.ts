@@ -88,7 +88,6 @@ export class RangeSliderDOM {
       this.enable()
     }
 
-    // block only if not disabled
     if (!configuration.disable) {
       if (configuration.block) {
         this.disable()
@@ -246,15 +245,6 @@ export class RangeSliderDOM {
     return element
   }
 
-  public getLabel(index: number): HTMLSpanElement {
-    const grid = this.getElement(RangeSliderElement.grid)
-    const label = grid.querySelector<HTMLSpanElement>(`.irs-grid-text.js-grid-text-${index}`)
-    if (!label) {
-      throw Error(`Label with given index "${index}" was not found`)
-    }
-    return label
-  }
-
   public addEventListener(type: SliderType, dragInterval: boolean, keyboard: boolean,
     pointerFocus: { (): void }) {
     const line = this.getElement(RangeSliderElement.line),
@@ -405,6 +395,15 @@ export class RangeSliderDOM {
       }
     }
     return RangeSliderUtil.toFixed(left)
+  }
+
+  private getLabel(index: number): HTMLSpanElement {
+    const grid = this.getElement(RangeSliderElement.grid)
+    const label = grid.querySelector<HTMLSpanElement>(`.irs-grid-text.js-grid-text-${index}`)
+    if (!label) {
+      throw Error(`Label with given index "${index}" was not found`)
+    }
+    return label
   }
 
   private disable() {

@@ -81,7 +81,6 @@ export class RangeSlider implements IRangeSlider {
 
     this.currentMinInterval = this.configuration.minInterval
 
-    // eslint-disable-next-line no-console
     console.log(this.configuration, this.currentMinInterval)
 
     this.state = new RangeSliderState(this.configuration)
@@ -244,12 +243,12 @@ export class RangeSlider implements IRangeSlider {
   private getPercentChange(keyCode: string): number {
     const stepAsPercent = this.state.getStepAsPercent()
     switch (keyCode) {
-      case "KeyW":
+      case "KeyS":
       case "KeyA":
       case "ArrowDown":
       case "ArrowLeft":
         return -stepAsPercent
-      case "KeyS":
+      case "KeyW":
       case "KeyD":
       case "ArrowUp":
       case "ArrowRight":
@@ -288,6 +287,8 @@ export class RangeSlider implements IRangeSlider {
 
     const handleWidthAsPercent = this.domElement.getHandleWidthAsPercent()
     const handleX = this.computeHandleX(handleWidthAsPercent)
+
+    console.log("target", this.target)
 
     switch (this.target) {
       case TargetType.base:
@@ -472,6 +473,7 @@ export class RangeSlider implements IRangeSlider {
       return TargetType.single
     } else {
       const mousePoint = this.fromHandleAsPercent + (this.toHandleAsPercent - this.fromHandleAsPercent) / 2
+      console.log("mousePoint", mousePoint, realX)
       if (realX >= mousePoint) {
         return this.configuration.toFixed ? TargetType.from : TargetType.to
       } else {
